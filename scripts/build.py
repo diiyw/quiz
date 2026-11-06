@@ -103,9 +103,11 @@ def main():
         archive = dist / (name + ".tar.gz")
         with tarfile.open(archive, "w:gz") as tar:
             tar.add(stage, arcname=name)
+    digest = hashlib.sha256()
     with archive.open("rb") as stream:
-        digest = hashlib.file_digest(stream, "sha256").hexdigest()
-    archive.with_name(archive.name + ".sha256").write_text(f"{digest}  {archive.name}\n")
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    archive.with_name(archive.name + ".sha256").write_text(f"{digest.hexdigest()}  {archive.name}\n")
     print(archive)
 
 
