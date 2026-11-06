@@ -1,0 +1,133 @@
+name: Build and release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: ${{ matrix.os }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: linux, arch: amd64, runner: ubuntu-22.04}
+          - {os: linux, arch: arm64, runner: ubuntu-24.04-arm}
+          - {os: windows, arch: amd64, runner: windows-2022}
+          - {os: darwin, arch: amd64, runner: macos-15-intel}
+          - {os: darwin, arch: arm64, runner: macos-15}
+    defaults:
+      run:
+        shell: bash
+        working-directory: quiz
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: quiz
+          persist-credentials: false
+      - name: Read pinned Onix revision
+        id: onix
+        run: echo "revision=$(cat .onix-revision)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: onix-engine/onix
+          ref: ${{ steps.onix.outputs.revision }}
+          path: onix
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: quiz/go.mod
+          cache-dependency-path: quiz/go.sum
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libx11-dev libxext-dev libxrender-dev libxi-dev libwayland-dev libxkbcommon-dev libgl1-mesa-dev desktop-file-utils
+      - name: Windows C compiler
+        if: runner.os == 'Windows'
+        run: |
+          echo 'C:\msys64\mingw64\bin' >> "$GITHUB_PATH"
+          echo 'CC=gcc' >> "$GITHUB_ENV"
+          echo 'CXX=g++' >> "$GITHUB_ENV"
+      - name: macOS deployment target
+        if: runner.os == 'macOS'
+        run: echo 'MACOSX_DEPLOYMENT_TARGET=13.0' >> "$GITHUB_ENV"
+      - name: Download dependencies
+        run: go mod download
+      - name: Test core and integration
+        run: go test -race ./internal/extract ./internal/integration ./internal/cli
+      - name: Vet
+        run: go vet ./internal/extract ./internal/integration ./internal/cli ./internal/desktop . ./cmd/quiz-cli
+      - name: Build distribution
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          TARGET_OS: ${{ matrix.os }}
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: |
+          version=dev
+          if [ "$REF_TYPE" = tag ]; then version="$REF_NAME"; fi
+          python scripts/build.py --version "$version" --os "$TARGET_OS" --arch "$TARGET_ARCH"
+      - name: Test packaged binaries
+        env:
+          TARGET_OS: ${{ matrix.os }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import os, subprocess
+          stage = next(Path('build').iterdir())
+          extension = '.exe' if os.environ['TARGET_OS'] == 'windows' else ''
+          desktop = stage / ('quiz' + extension)
+          if os.environ['TARGET_OS'] == 'darwin':
+              desktop = stage / 'Quiz.app/Contents/MacOS/quiz'
+          for binary in [desktop, stage / ('quiz-cli' + extension)]:
+              subprocess.run(['python', 'scripts/smoke.py', str(binary)], check=True)
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: quiz-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            quiz/dist/*.tar.gz
+            quiz/dist/*.zip
+            quiz/dist/*.sha256
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: quiz-*
+          merge-multiple: true
+          path: artifacts
+      - name: Publish release with gh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          cd artifacts
+          cat *.sha256 > SHA256SUMS
+          sha256sum --check SHA256SUMS
+          if gh release view "$RELEASE_TAG" --json isDraft > release.json 2>/dev/null; then
+            python -c 'import json; assert json.load(open("release.json"))["isDraft"], "Refusing to replace a published release"'
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --title "Quiz $RELEASE_TAG" --generate-notes --draft
+          fi
+          gh release upload "$RELEASE_TAG" *.tar.gz *.zip SHA256SUMS --clobber
+          gh release edit "$RELEASE_TAG" --draft=false

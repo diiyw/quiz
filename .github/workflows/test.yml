@@ -1,0 +1,32 @@
+name: Tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: quiz
+          persist-credentials: false
+      - id: onix
+        working-directory: quiz
+        run: echo "revision=$(cat .onix-revision)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: onix-engine/onix
+          ref: ${{ steps.onix.outputs.revision }}
+          path: onix
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: quiz/go.mod
+          cache-dependency-path: quiz/go.sum
+      - name: Test
+        working-directory: quiz
+        run: go test -race ./internal/extract ./internal/integration ./internal/cli
