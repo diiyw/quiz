@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Build a native desktop binary, CLI and a ready-to-use distribution archive."""
+"""Build the desktop app and CLI as Linux tar.gz, macOS DMG or Windows MSI."""
 import argparse
+from contextlib import nullcontext
 import hashlib
 import json
 import os
@@ -10,7 +11,8 @@ import re
 import shutil
 import subprocess
 import tarfile
-import zipfile
+
+from native_packages import numeric_version, package_dmg, package_msi, windows_resources
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -72,33 +74,37 @@ def main():
         bundle = stage / "Quiz.app" / "Contents"
         (bundle / "MacOS").mkdir(parents=True)
         binary = bundle / "MacOS" / "quiz"
-        version = args.version.removeprefix("v").split("-")[0]
-        if not re.fullmatch(r"\d+\.\d+\.\d+", version):
-            version = "0.0.0"
+        version = numeric_version(args.version)
+        (bundle / "Resources").mkdir()
+        shutil.copy2(ROOT / "assets/icon.icns", bundle / "Resources/Quiz.icns")
         with (bundle / "Info.plist").open("wb") as f:
             plistlib.dump({"CFBundleIdentifier": "io.github.diiyw.quiz", "CFBundleName": "Quiz",
                           "CFBundleDisplayName": "Quiz", "CFBundleExecutable": "quiz",
                           "CFBundlePackageType": "APPL", "CFBundleShortVersionString": version,
+                          "CFBundleIconFile": "Quiz.icns",
                           "CFBundleVersion": version, "LSMinimumSystemVersion": "13.0",
                           "NSHighResolutionCapable": True}, f)
     if args.os == "windows":
         flags += " -H windowsgui -extldflags=-static"
-    run("go", "build", "-trimpath", "-ldflags", flags, "-o", str(binary), ".", env=environment)
+    with windows_resources(args.arch) if args.os == "windows" else nullcontext():
+        run("go", "build", "-trimpath", "-ldflags", flags, "-o", str(binary), ".", env=environment)
     environment["CGO_ENABLED"] = "0"
     cli_flags = f"-s -w -X github.com/diiyw/quiz/internal/cli.Version={args.version}"
     run("go", "build", "-trimpath", "-ldflags", cli_flags, "-o", str(stage / ("quiz-cli" + extension)), "./cmd/quiz-cli", env=environment)
     for filename in ["README.md", "THIRD_PARTY_NOTICES.md"]:
         shutil.copy2(ROOT / filename, stage / filename)
     notices(stage)
+    if args.os == "linux":
+        shutil.copy2(ROOT / "assets/icon.svg", stage / "quiz.svg")
     if args.os == "darwin" and shutil.which("codesign"):
         run("codesign", "--force", "--deep", "--sign", "-", str(stage / "Quiz.app"))
         run("codesign", "--verify", "--deep", "--strict", str(stage / "Quiz.app"))
     if args.os == "windows":
-        archive = dist / (name + ".zip")
-        with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as z:
-            for item in sorted(stage.rglob("*")):
-                if item.is_file():
-                    z.write(item, item.relative_to(stage.parent))
+        archive = dist / (name + ".msi")
+        package_msi(stage, archive, args.version, args.arch)
+    elif args.os == "darwin":
+        archive = dist / (name + ".dmg")
+        package_dmg(stage, archive)
     else:
         archive = dist / (name + ".tar.gz")
         with tarfile.open(archive, "w:gz") as tar:

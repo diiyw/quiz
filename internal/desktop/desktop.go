@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/diiyw/quiz/assets"
 	"github.com/diiyw/quiz/internal/cli"
 	"github.com/diiyw/quiz/internal/extract"
 	"github.com/diiyw/quiz/internal/integration"
@@ -19,6 +20,7 @@ import (
 	"github.com/onix-engine/onix/input"
 	htmlui "github.com/onix-engine/onix/ui/html"
 	"github.com/onix-engine/onix/window"
+	windowpng "github.com/onix-engine/onix/window/codec/png"
 	_ "github.com/onix-engine/onix/window/filedialog"
 )
 
@@ -66,6 +68,11 @@ func Run(request cli.Request) error {
 	}
 	app.SetWindowSize(600, 244)
 	app.SetWindowTitle("Quiz · 解压工具")
+	app.Context.SetIconDecoder(windowpng.Decoder{})
+	if err := app.SetWindowIcon(assets.IconPNG); err != nil {
+		app.Destroy()
+		return fmt.Errorf("设置应用图标：%w", err)
+	}
 	surface := htmlui.New(view)
 	spawner := app.World.NewSpawner1[htmlui.Surface]()
 	owner := spawner.Spawn(surface)

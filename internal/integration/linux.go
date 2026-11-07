@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/diiyw/quiz/assets"
 	"github.com/diiyw/quiz/internal/extract"
 )
 
@@ -49,8 +50,9 @@ class QuizMenu(GObject.GObject, Nautilus.MenuProvider):
 	// Nautilus passes locally selected paths as positional arguments. Keeping argv
 	// intact supports spaces, quotes, newlines and leading hyphens.
 	script := "#!/bin/sh\n[ \"$#\" -gt 0 ] || exit 0\nexec " + shellQuote(c.Executable) + " --extract -- \"$@\"\n"
-	desktop := "[Desktop Entry]\nType=Application\nName=Quiz\nComment=Extract archives into their own folders\nExec=" + desktopQuote(c.Executable) + " --extract -- %F\nTerminal=false\nCategories=Utility;Archiving;\nMimeType=" + mimeTypes + "\n"
+	desktop := "[Desktop Entry]\nType=Application\nName=Quiz\nComment=Extract archives into their own folders\nIcon=io.github.diiyw.quiz\nExec=" + desktopQuote(c.Executable) + " --extract -- %F\nTerminal=false\nCategories=Utility;Archiving;\nMimeType=" + mimeTypes + "\n"
 	return []File{
+		{filepath.Join(c.DataDir, "icons", "hicolor", "scalable", "apps", "io.github.diiyw.quiz.svg"), assets.IconSVG, 0644},
 		{filepath.Join(c.DataDir, "kio", "servicemenus", "quiz-extract.desktop"), service, 0755},
 		{filepath.Join(c.DataDir, "kservices5", "ServiceMenus", "quiz-extract.desktop"), service, 0755},
 		{filepath.Join(c.DataDir, "nemo", "actions", "quiz-extract.nemo_action"), nemo, 0644},

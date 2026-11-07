@@ -1,6 +1,14 @@
+<p align="center">
+  <img src="assets/icon.png" width="128" height="128" alt="Quiz 应用图标">
+</p>
+
 # Quiz
 
-使用 [Onix](https://github.com/onix-engine/onix) 构建的跨平台桌面解压工具。当前只提供解压功能，文件始终留在本机。
+**把压缩包，变成同名文件夹。**
+
+Quiz 是使用 [Onix](https://github.com/onix-engine/onix) 和 Go 构建的跨平台桌面解压工具，支持 Windows、macOS 和 Linux。无需另装 7-Zip，解压在本机完成，文件与密码不会上传。
+
+[下载发布版](https://github.com/diiyw/quiz/releases/latest) · [反馈问题](https://github.com/diiyw/quiz/issues) · [构建状态](https://github.com/diiyw/quiz/actions/workflows/build.yml)
 
 选择或拖入压缩包立即解压，也可安装系统右键菜单后直接操作。支持批量队列、进度、取消、打开结果目录；7Z / RAR 需要密码时自动弹窗输入。
 
@@ -12,16 +20,19 @@
 
 ## 下载与运行
 
-从仓库 [Releases](https://github.com/diiyw/quiz/releases) 下载对应平台包并解开。
+从仓库 [Releases](https://github.com/diiyw/quiz/releases) 下载对应平台的安装包。下表为新的打包格式；较早版本仍可能提供 ZIP 或 macOS tar.gz，请以对应 Release 的附件为准。
 
 | 平台 | 产物 | 启动方式 |
 | --- | --- | --- |
-| Windows x64 | `quiz-v*-windows-amd64.zip` | 双击 `quiz.exe` |
-| macOS Intel | `quiz-v*-darwin-amd64.tar.gz` | 打开 `Quiz.app` |
-| macOS Apple Silicon | `quiz-v*-darwin-arm64.tar.gz` | 打开 `Quiz.app` |
+| Windows x64 | `quiz-v*-windows-amd64.msi` | 双击安装，通过开始菜单打开 Quiz |
+| macOS Intel | `quiz-v*-darwin-amd64.dmg` | 打开磁盘映像，将 `Quiz.app` 拖到 Applications |
+| macOS Apple Silicon | `quiz-v*-darwin-arm64.dmg` | 打开磁盘映像，将 `Quiz.app` 拖到 Applications |
 | Linux x64 / ARM64 | `quiz-v*-linux-*.tar.gz` | 运行 `./quiz` |
 
-所有包同时提供无图形依赖的 `quiz-cli`（Windows 为 `quiz-cli.exe`）以及依赖许可文件。
+所有包同时提供无图形依赖的 `quiz-cli`（Windows 为 `quiz-cli.exe`）以及依赖许可文件。发布时附带 SHA256 校验文件。
+
+Windows MSI 安装到当前用户的 `%LOCALAPPDATA%\Programs\Quiz`，不需要管理员权限；CLI 和许可文件位于同一目录，可从系统“已安装的应用”卸载。右键菜单需在应用内单独安装、移除。
+macOS DMG 内的 CLI 和许可文件与 `Quiz.app` 并列，需要命令行功能时可另行复制。
 macOS 最低 13.0；应用采用 ad-hoc 签名，尚未 Developer ID 签名或公证，首次运行可能需要在“隐私与安全性”中允许打开。
 Linux 桌面程序需要 X11 / XWayland、OpenGL 和系统字体；文件选择使用桌面的 XDG Portal。x64 包基于 Ubuntu 22.04，ARM64 包基于 Ubuntu 24.04。
 
@@ -81,19 +92,36 @@ Linux 开发库：`libx11-dev libxext-dev libxrender-dev libxi-dev libwayland-de
 生成本机发布包：
 
 ```sh
-python3 scripts/build.py --version v0.1.0 --os linux --arch amd64
-python3 scripts/smoke.py build/quiz-v0.1.0-linux-amd64/quiz
+python3 scripts/build.py --version v0.1.3 --os linux --arch amd64
+python3 scripts/check-package.py --os linux
 ```
 
-`--os` / `--arch` 可选择其他目标，但交叉构建桌面程序需要相应的 CGO 工具链；发布工作流使用各平台原生 runner。
+产物写入 `dist/`：Linux 为 `.tar.gz`、macOS 为 `.dmg`、Windows 为 `.msi`，各附带 `.sha256`。`check-package.py` 要求 `dist/` 中只有一份当前平台的包。
+
+`--os` / `--arch` 可选择其他目标，但交叉构建桌面程序需要相应的 CGO 工具链；DMG 和 MSI 使用各平台原生工具，完整打包请在对应系统执行。
+
+- macOS：使用系统自带的 `hdiutil` 生成 DMG、`codesign` 签名，并在 App Bundle 中配置 ICNS 图标。
+- Windows：需要 MinGW-w64 的 `windres` 和 [.NET SDK](https://dotnet.microsoft.com/download)，执行 `dotnet tool install --global wix --version 6.0.2` 安装 WiX。若只有较新的 .NET Runtime，设置 `DOTNET_ROLL_FORWARD=Major`。MSI 包含开始菜单快捷方式，支持升级和卸载。
+
+## 应用图标
+
+原始矢量图标位于 [`assets/icon.svg`](assets/icon.svg)，同时提供 PNG、Windows ICO 和 macOS ICNS。桌面窗口、Windows 可执行文件与安装器、macOS App Bundle，以及 Linux 菜单安装的桌面入口使用同一图标。
+
+修改 SVG 后可重新生成平台资源（正常构建直接使用已提交的资源，无需安装图标工具）：
+
+```sh
+# 需要 Node.js/npm；脚本会临时下载固定版本的 resvg 来渲染 SVG
+python3 -m pip install Pillow
+python3 scripts/generate-icons.py
+```
 
 ## GitHub Actions 发布
 
-`.github/workflows/test.yml` 在 push / PR 时运行核心测试。`build.yml` 支持手动构建，并在推送 `v*` tag 时自动构建五种平台包、执行测试、生成 SHA256 校验文件，最后使用 `gh release` 发布。
+`.github/workflows/test.yml` 在 push / PR 时运行核心测试。`build.yml` 支持手动构建，并在推送 `v*` tag 时自动构建五种平台包、执行测试、生成 SHA256 校验文件，最后使用 `gh release` 发布。工作流还会解开 Linux tar.gz、挂载 DMG，以及安装和卸载 MSI，验证包内程序的解压行为。
 
 ```sh
-git tag -a v0.1.0 -m "Quiz v0.1.0"
-git push origin v0.1.0
+git tag -a v0.1.3 -m "Quiz v0.1.3"
+git push origin v0.1.3
 ```
 
 工作流通过 Go 模块下载 `go.mod` 锁定的远程 Onix 版本。Release 仅在所有构建成功后发布，使用 GitHub 自动提供的 `GITHUB_TOKEN`，无需另设 PAT。手动构建保留 Actions artifacts，不创建 Release。
