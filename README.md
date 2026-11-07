@@ -6,11 +6,39 @@
 
 **把压缩包，变成同名文件夹。**
 
-Quiz 是使用 [Onix](https://github.com/onix-engine/onix) 和 Go 构建的跨平台桌面解压工具，支持 Windows、macOS 和 Linux。无需另装 7-Zip，解压在本机完成，文件与密码不会上传。
+Quiz 是一款适用于 Windows、macOS 和 Linux 的桌面解压工具。拖入压缩包即可解压，无需另装 7-Zip；文件和密码都留在本机，不会上传。
 
-[下载发布版](https://github.com/diiyw/quiz/releases/latest) · [反馈问题](https://github.com/diiyw/quiz/issues) · [构建状态](https://github.com/diiyw/quiz/actions/workflows/build.yml)
+[下载最新版](https://github.com/diiyw/quiz/releases/latest) · [反馈问题](https://github.com/diiyw/quiz/issues)
 
-选择或拖入压缩包立即解压，也可安装系统右键菜单后直接操作。支持批量队列、进度、取消、打开结果目录；7Z / RAR 需要密码时自动弹窗输入。
+- **拖入即解压**：支持同时选择或拖入多个压缩包，依次处理。
+- **自动整理**：在压缩包旁创建同名文件夹；已有同名目录时自动编号，避免覆盖。
+- **密码解压**：打开加密的 7Z / RAR 时弹窗输入密码。
+- **右键解压**：安装右键菜单后，可直接在文件管理器中操作。
+- **随时取消**：查看解压进度、取消任务，完成后一键打开文件夹。
+
+## 下载与安装
+
+当前版本：**v0.1.3**。根据你的系统和处理器选择下载：
+
+| 系统 | 下载 | 安装方式 |
+| --- | --- | --- |
+| Windows 64 位 | [MSI 安装包](https://github.com/diiyw/quiz/releases/download/v0.1.3/quiz-v0.1.3-windows-amd64.msi) | 双击安装，从开始菜单打开 Quiz |
+| macOS Apple 芯片（M 系列） | [DMG 安装包](https://github.com/diiyw/quiz/releases/download/v0.1.3/quiz-v0.1.3-darwin-arm64.dmg) | 打开 DMG，将 `Quiz.app` 拖入 Applications（应用程序） |
+| macOS Intel 芯片 | [DMG 安装包](https://github.com/diiyw/quiz/releases/download/v0.1.3/quiz-v0.1.3-darwin-amd64.dmg) | 打开 DMG，将 `Quiz.app` 拖入 Applications（应用程序） |
+| Linux x64 | [tar.gz 压缩包](https://github.com/diiyw/quiz/releases/download/v0.1.3/quiz-v0.1.3-linux-amd64.tar.gz) | 解压后运行目录中的 `quiz` |
+| Linux ARM64 | [tar.gz 压缩包](https://github.com/diiyw/quiz/releases/download/v0.1.3/quiz-v0.1.3-linux-arm64.tar.gz) | 解压后运行目录中的 `quiz` |
+
+Windows 安装只对当前用户生效，无需管理员权限。
+
+macOS 需要 **13.0 或更新版本**。可在“关于本机”中查看芯片类型。应用尚未经过 Apple 公证，首次打开如被系统拦截，请在“系统设置 → 隐私与安全性”中允许打开。
+
+Linux 需要支持 X11 / XWayland 和 OpenGL 的图形桌面。x64 包基于 Ubuntu 22.04，ARM64 包基于 Ubuntu 24.04；其他发行版需具备兼容的系统库。
+
+## 开始解压
+
+1. 打开 Quiz，将压缩包拖入窗口，或点击“选择文件解压”。
+2. Quiz 会在压缩包所在目录中创建同名文件夹，并开始解压。
+3. 完成后点击“打开文件夹”，查看解压结果。
 
 ```text
 下载/照片.zip       → 下载/照片/
@@ -18,110 +46,74 @@ Quiz 是使用 [Onix](https://github.com/onix-engine/onix) 和 Go 构建的跨�
 已有“照片”文件夹   → 下载/照片 (2)/
 ```
 
-## 下载与运行
+可以一次添加多个压缩包，Quiz 会按顺序处理。点击“取消全部”会停止当前任务并清空等待队列；当前任务已解压的内容会清理，原压缩包和已有文件保持不变。
 
-从仓库 [Releases](https://github.com/diiyw/quiz/releases) 下载对应平台的安装包。下表为新的打包格式；较早版本仍可能提供 ZIP 或 macOS tar.gz，请以对应 Release 的附件为准。
+解压加密的 7Z / RAR 时，输入密码后点击“继续解压”。密码错误可以重试；取消密码输入会跳过该压缩包，继续处理其他任务。
 
-| 平台 | 产物 | 启动方式 |
-| --- | --- | --- |
-| Windows x64 | `quiz-v*-windows-amd64.msi` | 双击安装，通过开始菜单打开 Quiz |
-| macOS Intel | `quiz-v*-darwin-amd64.dmg` | 打开磁盘映像，将 `Quiz.app` 拖到 Applications |
-| macOS Apple Silicon | `quiz-v*-darwin-arm64.dmg` | 打开磁盘映像，将 `Quiz.app` 拖到 Applications |
-| Linux x64 / ARM64 | `quiz-v*-linux-*.tar.gz` | 运行 `./quiz` |
+## 在右键菜单中使用
 
-所有包同时提供无图形依赖的 `quiz-cli`（Windows 为 `quiz-cli.exe`）以及依赖许可文件。发布时附带 SHA256 校验文件。
+在 Quiz 窗口中点击“安装右键菜单”，然后重新打开文件管理器。选中压缩包后右键，选择“用 Quiz 解压到同名文件夹”。
 
-Windows MSI 安装到当前用户的 `%LOCALAPPDATA%\Programs\Quiz`，不需要管理员权限；CLI 和许可文件位于同一目录，可从系统“已安装的应用”卸载。右键菜单需在应用内单独安装、移除。
-macOS DMG 内的 CLI 和许可文件与 `Quiz.app` 并列，需要命令行功能时可另行复制。
-macOS 最低 13.0；应用采用 ad-hoc 签名，尚未 Developer ID 签名或公证，首次运行可能需要在“隐私与安全性”中允许打开。
-Linux 桌面程序需要 X11 / XWayland、OpenGL 和系统字体；文件选择使用桌面的 XDG Portal。x64 包基于 Ubuntu 22.04，ARM64 包基于 Ubuntu 24.04。
-
-## 右键菜单
-
-打开 Quiz，点击“安装右键菜单”，或运行桌面可执行文件的 `--install-menu` 命令。安装会将程序复制到用户目录，因此安装后移动原下载文件不影响菜单。更新版本后再次安装即可。
-
-| 平台 | 菜单位置 |
+| 文件管理器 | 菜单位置 |
 | --- | --- |
-| Windows | 资源管理器 → 用 Quiz 解压到同名文件夹；Windows 11 通常在“显示更多选项” |
-| macOS | Finder → 快速操作 / 服务 → 用 Quiz 解压到同名文件夹 |
-| KDE Dolphin | 压缩文件的右键菜单 |
-| Nemo | 压缩文件的右键菜单 |
-| GNOME Nautilus | 安装 `python3-nautilus` 后有直接菜单；也提供“脚本”子菜单入口 |
+| Windows 资源管理器 | 右键菜单；Windows 11 通常需先点击“显示更多选项” |
+| macOS Finder | “快速操作”或“服务”；如未出现，请在系统设置的扩展中启用 Quiz |
+| KDE Dolphin / Nemo | 压缩包的右键菜单 |
+| GNOME Nautilus | “脚本”子菜单；安装 `python3-nautilus` 后也可使用直接右键菜单 |
 
-安装只修改当前用户的菜单配置，不接管默认打开方式。文件管理器可能需要重新打开；macOS 可能需要在系统设置的扩展中启用该快速操作。Finder 服务可显示在普通文件上，但 Quiz 只接受支持的压缩扩展名。其他 Linux 文件管理器可使用“打开方式 → Quiz”，暂未提供专属菜单插件。
+右键菜单不会改变压缩文件的默认打开方式。更新 Quiz 后，请再次点击“安装右键菜单”，让菜单使用新版本。无需该功能时，在应用中点击“移除菜单”。
 
-“移除菜单”或 `--uninstall-menu` 会删除本应用的注册项，保留复制到用户目录的程序，避免删除正在运行的文件。其位置为 Linux `$XDG_DATA_HOME/quiz/bin/quiz`（默认 `~/.local/share`）、macOS `~/Library/Application Support/Quiz/quiz`、Windows `%LOCALAPPDATA%\Quiz\quiz.exe`。
+## 支持的格式
 
-## 格式和边界
+ZIP、7Z、RAR、TAR、GZIP、BZIP2、XZ、Zstandard、LZ4、LZIP，以及 `.tar.gz`、`.tar.xz`、`.tar.zst`、`.tgz`、`.tbz2`、`.txz` 等组合和别名。
 
-支持 ZIP、7Z、RAR、TAR、GZIP、BZIP2、XZ、Zstandard、LZ4、LZIP，以及对应的 TAR 组合和 `tgz` / `tbz2` / `txz` 等常见别名。解码器来自 [mholt/archives](https://github.com/mholt/archives)，无需另装 7-Zip。
+使用时请留意：
 
-- ZIP 加密、分卷压缩包和自解压程序暂不支持；7Z / RAR 密码支持取决于底层解码器。
-- 默认每个压缩包最多解压 100 GiB、100 万条目；命令行可调整上限。
-- 不覆盖、不合并已有目录。损坏、取消、越界路径或不支持的条目导致整个任务失败，并清理本次目录；已有内容保持不变。
-- 符号链接、硬链接、设备文件及 Windows 不合法文件名会被拒绝；常规文件保留修改时间和可执行位，不恢复所有权或特权权限。
-- 各桌面平台的菜单体验需在对应系统上验收；自动构建会验证二进制解压行为，不替代 Finder / Explorer 的交互验收。
+- 暂不支持加密 ZIP、分卷压缩包和自解压程序；部分 7Z / RAR 加密方式也可能无法解压。
+- 默认每个压缩包最多解压 **100 GiB、100 万条目**。
+- 如果压缩包损坏、含有不安全路径、符号链接或其他不支持的内容，Quiz 会停止该任务并清理本次输出，避免留下不完整的结果。
+- Quiz 目前只提供解压功能，不提供创建压缩包的功能。
 
-## 命令行
+## 常见问题
+
+### 解压后的文件在哪里？
+
+就在原压缩包旁边的同名文件夹中。解压完成后点击“打开文件夹”即可查看；原压缩包不会被删除。
+
+### 为什么没有覆盖已有文件夹？
+
+Quiz 会自动创建带编号的新文件夹，例如 `照片 (2)`，保护已有内容。
+
+### 如何更新或卸载？
+
+更新时下载并安装新版本即可。使用右键菜单的用户，更新后还需在应用中再次点击“安装右键菜单”。
+
+卸载前先打开 Quiz，点击“移除菜单”。Windows 随后可从系统“已安装的应用”中卸载；macOS 将 Quiz 从“应用程序”移到废纸篓；Linux 删除解压出的程序目录。
+
+菜单安装时会单独保存一份程序，移除菜单后仍会保留。若要彻底清理，可在退出 Quiz 后删除对应文件：
+
+| 系统 | 菜单保存的程序 |
+| --- | --- |
+| Windows | `%LOCALAPPDATA%\Quiz\quiz.exe` |
+| macOS | `~/Library/Application Support/Quiz/quiz` |
+| Linux | `~/.local/share/quiz/bin/quiz`；设置过 `XDG_DATA_HOME` 时位于该目录下的 `quiz/bin/quiz` |
+
+### 遇到问题如何反馈？
+
+请在 [Issues](https://github.com/diiyw/quiz/issues) 中说明系统版本、Quiz 版本、压缩格式和错误提示。请勿公开压缩包密码或包含隐私的文件。
+
+## 命令行使用（可选）
+
+下载包中也包含 `quiz-cli`（Windows 为 `quiz-cli.exe`）。在终端进入程序所在目录后运行：
 
 ```sh
 ./quiz-cli -- archive.zip archive.7z
-./quiz --headless -- backup.tar.gz
-./quiz --install-menu
-./quiz --uninstall-menu
-./quiz-cli --max-bytes 214748364800 --max-entries 2000000 -- backup.tar.zst
 ./quiz-cli --password-env QUIZ_PASSWORD -- private.7z
-./quiz-cli --version
+./quiz-cli --help
 ```
 
-`--password-env` 从指定环境变量取密码，不在进程参数中传明文。桌面程序遇到加密包时弹窗输入密码，仅用于当前压缩包；密码无效时可重试，取消则跳过当前包并继续队列。命令行单个任务失败仍继续其他任务，但返回非零状态；Ctrl+C 取消并清理当前任务。
+Windows PowerShell 中将 `./quiz-cli` 换成 `.\quiz-cli.exe`。`--password-env` 从指定的环境变量读取密码，使用前需设置该变量。
 
-## 本地构建
+---
 
-需要 Go 1.27.3 和 C/C++ 工具链。Onix 使用远程 `0.1.1` 标签对应的固定版本，由 Go 自动下载，无需本地引擎目录。模块路径为 `github.com/onix-engine/onix`；无 `v` 前缀的标签由 Go 记录为对应提交的伪版本。
-
-```sh
-go mod download
-go build -o dist/quiz .
-go build -o dist/quiz-cli ./cmd/quiz-cli
-go test -race ./internal/desktop ./internal/extract ./internal/integration ./internal/cli
-```
-
-Linux 开发库：`libx11-dev libxext-dev libxrender-dev libxi-dev libwayland-dev libxkbcommon-dev libgl1-mesa-dev pkg-config`。Windows 使用 MinGW-w64，macOS 使用 Xcode Command Line Tools。只构建 CLI 时可设置 `CGO_ENABLED=0`。
-
-生成本机发布包：
-
-```sh
-python3 scripts/build.py --version v0.1.3 --os linux --arch amd64
-python3 scripts/check-package.py --os linux
-```
-
-产物写入 `dist/`：Linux 为 `.tar.gz`、macOS 为 `.dmg`、Windows 为 `.msi`，各附带 `.sha256`。`check-package.py` 要求 `dist/` 中只有一份当前平台的包。
-
-`--os` / `--arch` 可选择其他目标，但交叉构建桌面程序需要相应的 CGO 工具链；DMG 和 MSI 使用各平台原生工具，完整打包请在对应系统执行。
-
-- macOS：使用系统自带的 `hdiutil` 生成 DMG、`codesign` 签名，并在 App Bundle 中配置 ICNS 图标。
-- Windows：需要 MinGW-w64 的 `windres` 和 [.NET SDK](https://dotnet.microsoft.com/download)，执行 `dotnet tool install --global wix --version 6.0.2` 安装 WiX。若只有较新的 .NET Runtime，设置 `DOTNET_ROLL_FORWARD=Major`。MSI 包含开始菜单快捷方式，支持升级和卸载。
-
-## 应用图标
-
-原始矢量图标位于 [`assets/icon.svg`](assets/icon.svg)，同时提供 PNG、Windows ICO 和 macOS ICNS。桌面窗口、Windows 可执行文件与安装器、macOS App Bundle，以及 Linux 菜单安装的桌面入口使用同一图标。
-
-修改 SVG 后可重新生成平台资源（正常构建直接使用已提交的资源，无需安装图标工具）：
-
-```sh
-# 需要 Node.js/npm；脚本会临时下载固定版本的 resvg 来渲染 SVG
-python3 -m pip install Pillow
-python3 scripts/generate-icons.py
-```
-
-## GitHub Actions 发布
-
-`.github/workflows/test.yml` 在 push / PR 时运行核心测试。`build.yml` 支持手动构建，并在推送 `v*` tag 时自动构建五种平台包、执行测试、生成 SHA256 校验文件，最后使用 `gh release` 发布。工作流还会解开 Linux tar.gz、挂载 DMG，以及安装和卸载 MSI，验证包内程序的解压行为。
-
-```sh
-git tag -a v0.1.3 -m "Quiz v0.1.3"
-git push origin v0.1.3
-```
-
-工作流通过 Go 模块下载 `go.mod` 锁定的远程 Onix 版本。Release 仅在所有构建成功后发布，使用 GitHub 自动提供的 `GITHUB_TOKEN`，无需另设 PAT。手动构建保留 Actions artifacts，不创建 Release。
+[开发指南](docs/DEVELOPMENT.md) · [第三方许可](THIRD_PARTY_NOTICES.md)
