@@ -73,6 +73,9 @@ def msi_source(stage, version, arch):
     element(package, "Icon", Id="QuizIcon", SourceFile=str(ROOT / "assets/icon.ico"))
     element(package, "Property", Id="ARPPRODUCTICON", Value="QuizIcon")
     element(package, "Property", Id="ARPURLINFOABOUT", Value="https://github.com/diiyw/quiz")
+    location = element(package, "Property", Id="INSTALLFOLDER", Secure="yes")
+    element(location, "RegistrySearch", Id="PreviousInstallFolder", Root="HKCU",
+            Key=r"Software\diiyw\Quiz\Installer", Name="InstallFolder", Type="raw")
     local = element(package, "StandardDirectory", Id="LocalAppDataFolder")
     programs = element(local, "Directory", Id="UserPrograms", Name="Programs")
     install = element(programs, "Directory", Id="INSTALLFOLDER", Name="Quiz")
@@ -113,9 +116,13 @@ def msi_source(stage, version, arch):
     menu = element(package, "StandardDirectory", Id="ProgramMenuFolder")
     menu = element(menu, "Directory", Id="QuizMenuFolder", Name="Quiz")
     node = component(menu, "start-menu")
+    # Restore the chosen directory during maintenance, upgrades and uninstall.
+    element(node, "RegistryValue", Root="HKCU", Key=r"Software\diiyw\Quiz\Installer",
+            Name="InstallFolder", Type="string", Value="[INSTALLFOLDER]")
     element(node, "Shortcut", Id="QuizShortcut", Name="Quiz", Target="[#QuizExecutable]",
             WorkingDirectory="INSTALLFOLDER", Icon="QuizIcon")
     element(node, "RemoveFolder", Id="RemoveQuizMenuFolder", On="uninstall")
+    element(node, "RemoveFolder", Id="RemoveUserPrograms", Directory="UserPrograms", On="uninstall")
     ET.indent(wix)
     return ET.tostring(wix, encoding="unicode", xml_declaration=True)
 

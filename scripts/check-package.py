@@ -66,6 +66,7 @@ def main():
             # Start Menu registration, binaries and uninstall cleanup.
             installed = directory / "installed"
             log = directory / "install.log"
+            uninstall_log = directory / "uninstall.log"
             try:
                 msiexec("/i", str(package), "/qn", "/norestart", f"INSTALLFOLDER={installed}",
                         "/l*v", str(log))
@@ -78,8 +79,10 @@ def main():
                     print(log.read_text(encoding="utf-16", errors="replace"))
                 raise
             finally:
-                msiexec("/x", str(package), "/qn", "/norestart")
-            assert not (installed / "quiz.exe").exists()
+                msiexec("/x", str(package), "/qn", "/norestart", "/l*v", str(uninstall_log))
+            if (installed / "quiz.exe").exists():
+                print(uninstall_log.read_text(encoding="utf-16", errors="replace"))
+                raise AssertionError("Uninstall left quiz.exe in the installation directory")
             assert not (Path(os.environ["APPDATA"]) / "Microsoft/Windows/Start Menu/Programs/Quiz/Quiz.lnk").exists()
     print(f"Verified {package.name}")
 
