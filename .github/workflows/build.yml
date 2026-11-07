@@ -64,8 +64,8 @@ jobs:
         run: echo 'MACOSX_DEPLOYMENT_TARGET=13.0' >> "$GITHUB_ENV"
       - name: Download dependencies
         run: go mod download
-      - name: Test core and integration
-        run: go test -race ./internal/extract ./internal/integration ./internal/cli
+      - name: Test desktop, core and integration
+        run: go test -race ./internal/desktop ./internal/extract ./internal/integration ./internal/cli
       - name: Vet
         run: go vet ./internal/extract ./internal/integration ./internal/cli ./internal/desktop . ./cmd/quiz-cli
       - name: Build distribution

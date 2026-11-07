@@ -3,51 +3,47 @@
 <head><meta charset="utf-8"><title>Quiz</title>
 <style>
 * { box-sizing: border-box; }
-html, body { margin: 0; width: 100%; height: 100%; background: #f7f6f3; color: #2f3437; font-family: sans-serif; font-size: 14px; }
-body { padding: 28px 36px; overflow-y: auto; }
-.header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 20px; border-bottom: 1px solid #e5e3dd; }
-.brand { font-size: 26px; font-weight: 700; letter-spacing: 3px; }
-.caption { font-size: 12px; color: #73756e; letter-spacing: 1px; }
-h1 { margin: 26px 0 8px; font-size: 30px; font-weight: 600; }
-p { margin: 0; line-height: 1.6; }
-.muted { color: #72766e; }
-.drop { margin-top: 22px; padding: 26px; background: #ffffff; border: 1px solid #dedfd7; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 20px; }
-.drop-title { font-size: 18px; font-weight: 600; margin-bottom: 7px; }
-button { font-family: sans-serif; font-size: 14px; padding: 12px 20px; border: 1px solid #dedfd7; border-radius: 5px; color: #2f3437; background: #ffffff; cursor: pointer; }
-button:hover { background: #efeee9; }
-button:focus { outline: 2px solid #548061; }
-button:disabled { opacity: .4; cursor: default; }
-.primary { background: #2f3932; color: #ffffff; border-color: #2f3932; }
-.primary:hover { background: #455447; }
-.password { display: flex; gap: 12px; align-items: center; margin-top: 16px; }
-input { font-family: sans-serif; height: 36px; width: 240px; border: 1px solid #dedfd7; border-radius: 4px; background: #ffffff; color: #2f3437; padding: 8px 10px; }
-input:focus { border-color: #548061; }
-.small { font-size: 12px; }
-.section-heading { margin-top: 26px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-.section-title { font-size: 13px; color: #72766e; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #f7f6f3; color: #2f3437; font-family: sans-serif; font-size: 13px; }
+body { padding: 10px 16px; }
+p { margin: 0; line-height: 18px; }
+.header { display: flex; align-items: center; justify-content: space-between; height: 30px; padding-bottom: 6px; border-bottom: 1px solid #e5e3dd; }
+.brand { font-size: 22px; font-weight: 700; letter-spacing: 2px; }
 .state { color: #346538; font-size: 12px; }
-.task { background: #eeefe9; padding: 18px 20px; border-radius: 6px; }
-.task-name { font-size: 16px; font-weight: 600; margin-bottom: 8px; overflow-wrap: anywhere; }
-#detail, #destination, #history, #menu-status { overflow-wrap: anywhere; }
-#destination { margin-top: 6px; }
-#history { margin-top: 14px; max-height: 120px; overflow-y: auto; white-space: pre-wrap; font-size: 12px; line-height: 1.7; color: #626960; }
-.actions { display: flex; gap: 10px; margin-top: 14px; }
-.actions button { padding: 8px 14px; font-size: 12px; }
-.footer { margin-top: 24px; padding-top: 18px; border-top: 1px solid #e5e3dd; display: flex; justify-content: space-between; gap: 16px; align-items: center; }
-.footer button { padding: 8px 13px; font-size: 12px; }
-#menu-status { margin-top: 10px; font-size: 12px; color: #72766e; }
-.error { color: #9f2f2d; }
+.muted { color: #72766e; }
+.small { font-size: 12px; }
+.drop { margin-top: 8px; height: 48px; padding: 8px 12px; background: #ffffff; border: 1px solid #dedfd7; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.drop-title { font-size: 14px; font-weight: 600; }
+button { flex-shrink: 0; font-family: sans-serif; font-size: 12px; height: 28px; padding: 4px 12px; border: 1px solid #dedfd7; border-radius: 4px; color: #2f3437; background: #ffffff; cursor: pointer; white-space: nowrap; }
+button:hover { background: #efeee9; }
+button:focus, input:focus { outline: 2px solid #548061; }
+button:disabled { opacity: .4; cursor: default; }
+.primary { height: 32px; background: #2f3932; color: #ffffff; border-color: #2f3932; }
+.primary:hover { background: #455447; }
+input { display: block; width: 100%; font-family: sans-serif; font-size: 13px; height: 32px; border: 1px solid #dedfd7; border-radius: 4px; background: #ffffff; color: #2f3437; padding: 6px 10px; }
+.task { margin-top: 8px; background: #eeefe9; padding: 8px 12px; border-radius: 6px; }
+.task-row { display: flex; align-items: center; gap: 10px; height: 28px; }
+.task-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; height: 20px; line-height: 20px; }
+#filename, #detail, #destination { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#detail, #destination { height: 18px; }
+.actions { display: flex; flex-shrink: 0; gap: 8px; }
+.footer { margin-top: 8px; padding-top: 4px; border-top: 1px solid #e5e3dd; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.feedback { flex: 1; min-width: 0; }
+#history, #menu-status { height: 18px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; line-height: 18px; color: #72766e; }
+#history:empty, #menu-status:empty { display: none; }
+.menu-actions { display: flex; gap: 8px; }
+.error { color: #9f2f2d; font-size: 12px; }
+.modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; display: flex; align-items: center; justify-content: center; background: #2f343760; }
+.modal[hidden] { display: none; }
+.dialog { width: 360px; padding: 16px; border: 1px solid #dedfd7; border-radius: 6px; background: #f7f6f3; }
+.dialog-title { font-size: 16px; font-weight: 600; }
+#password-file { margin-top: 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#password-message { display: block; margin: 8px 0 6px; font-size: 12px; color: #72766e; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 </style></head>
 <body>
-<div class="header"><span class="brand">QUIZ</span><span class="caption">本地解压 · 简单一点</span></div>
-<h1>打开压缩包，就这么简单。</h1>
-<p class="muted">解压到压缩包旁的同名文件夹，文件各归其位。</p>
-<div class="drop"><div><p class="drop-title">将压缩包拖到这里</p><p class="muted small">ZIP · 7Z · RAR · TAR · GZ · BZ2 · XZ · ZSTD · LZ4 · LZIP</p></div><button id="choose" class="primary">选择文件并解压</button></div>
-<div class="password"><label for="password" class="muted small">压缩包密码</label><input id="password" type="password" placeholder="可选，仅 7Z / RAR" autocomplete="off"><span class="muted small">可一次选择多个文件</span></div>
-<div class="section-heading"><span class="section-title">解压任务</span><span id="state" class="state">准备就绪</span></div>
-<div class="task"><p id="filename" class="task-name">等待选择压缩文件</p><p id="detail" class="muted small">例如：旅行照片.zip → 旅行照片/</p><p id="destination" class="muted small">同名文件夹已存在时自动编号，不覆盖原有文件。</p></div>
-<div class="actions"><button id="cancel" disabled>取消全部</button><button id="open" disabled>打开解压文件夹</button></div>
-<div id="history"></div>
-<div class="footer"><div><p>从右键菜单，直接解压。</p><p class="muted small">安装一次，之后选中压缩包即可使用。</p></div><div><button id="install">安装右键菜单</button> <button id="uninstall">移除菜单</button></div></div>
-<p id="menu-status">仅为当前用户安装，无需管理员权限。</p>
+<div class="header"><span class="brand">QUIZ</span><span id="state" class="state">准备就绪</span></div>
+<div class="drop"><p class="drop-title">拖入压缩包</p><button id="choose" class="primary">选择文件解压</button></div>
+<div class="task"><div class="task-row"><p id="filename" class="task-name">等待选择文件</p><div class="actions"><button id="cancel" disabled>取消全部</button><button id="open" disabled>打开文件夹</button></div></div><p id="detail" class="muted small">解压到同名文件夹</p><p id="destination" class="muted small"></p></div>
+<div class="footer"><div class="feedback"><p id="history"></p><p id="menu-status"></p></div><div class="menu-actions"><button id="install">安装右键菜单</button><button id="uninstall">移除菜单</button></div></div>
+<div id="password-dialog" class="modal" hidden><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="password-title" aria-describedby="password-file"><p id="password-title" class="dialog-title">需要密码</p><p id="password-file" class="muted small"></p><label id="password-message" for="password">请输入压缩包密码</label><input id="password" type="password" autocomplete="off"><div class="dialog-actions"><button id="password-cancel">取消</button><button id="password-confirm" class="primary" disabled>继续解压</button></div></div></div>
 </body></html>

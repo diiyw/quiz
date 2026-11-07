@@ -13,6 +13,7 @@ import (
 
 	"github.com/diiyw/onix"
 	"github.com/diiyw/onix/ecs"
+	"github.com/diiyw/onix/input"
 	htmlui "github.com/diiyw/onix/ui/html"
 	"github.com/diiyw/onix/window"
 	_ "github.com/diiyw/onix/window/filedialog"
@@ -34,24 +35,26 @@ type menuOutcome struct {
 }
 
 type controller struct {
-	app             *onix.App
-	nodes           map[string]htmlui.Node
-	cancel          context.CancelFunc
-	finished        chan outcome
-	menuFinished    chan menuOutcome
-	password        string
-	lastDestination string
-	queue           []string
-	history         []string
-	progress        extract.Progress
-	options         extract.Options
-	workers         sync.WaitGroup
-	events          ecs.MessageReader[htmlui.Event]
-	progressMu      sync.Mutex
-	progressChanged bool
-	busy            bool
-	menuBusy        bool
-	closing         bool
+	app              *onix.App
+	nodes            map[string]htmlui.Node
+	cancel           context.CancelFunc
+	finished         chan outcome
+	menuFinished     chan menuOutcome
+	passwordRequests chan passwordRequest
+	pendingPassword  *passwordRequest
+	password         string
+	lastDestination  string
+	queue            []string
+	progress         extract.Progress
+	options          extract.Options
+	workers          sync.WaitGroup
+	events           ecs.MessageReader[htmlui.Event]
+	progressMu       sync.Mutex
+	progressChanged  bool
+	busy             bool
+	menuBusy         bool
+	closing          bool
+	idle             bool
 }
 
 func Run(request cli.Request) error {
@@ -61,19 +64,19 @@ func Run(request cli.Request) error {
 	if err := app.InstallSystems[onix.UIHTML](); err != nil {
 		return err
 	}
-	app.SetWindowSize(860, 730)
+	app.SetWindowSize(600, 244)
 	app.SetWindowTitle("Quiz · 解压工具")
 	surface := htmlui.New(view)
 	spawner := app.World.NewSpawner1[htmlui.Surface]()
 	owner := spawner.Spawn(surface)
-	c := &controller{app: app, nodes: make(map[string]htmlui.Node), finished: make(chan outcome, 1), menuFinished: make(chan menuOutcome, 1), options: request.Options, password: request.Options.Password}
+	c := &controller{app: app, nodes: make(map[string]htmlui.Node), finished: make(chan outcome, 1), menuFinished: make(chan menuOutcome, 1), passwordRequests: make(chan passwordRequest, 1), options: request.Options, idle: true}
 	defer func() {
 		if c.cancel != nil {
 			c.cancel()
 		}
 		c.workers.Wait()
 	}()
-	for _, id := range []string{"choose", "password", "state", "filename", "detail", "destination", "cancel", "open", "history", "install", "uninstall", "menu-status"} {
+	for _, id := range []string{"choose", "password", "password-dialog", "password-file", "password-message", "password-confirm", "password-cancel", "state", "filename", "detail", "destination", "cancel", "open", "history", "install", "uninstall", "menu-status"} {
 		node, ok := htmlui.NodeByID(app.World, owner, id)
 		if !ok {
 			app.Destroy()
@@ -92,12 +95,23 @@ func Run(request cli.Request) error {
 		}
 		c.closing = true
 		c.queue = nil
+		c.hidePassword()
 		if c.cancel != nil {
 			c.cancel()
 		}
 		c.nodes["state"].SetText("正在清理，请稍候")
+		c.updateIdle()
 		app.RequestRender()
 		return false
+	})
+	app.AddInputHandler(input.PhaseGlobal, func(event *input.Dispatch) {
+		if c.pendingPassword != nil && event.Event.Kind == input.EventKeyDown && event.Event.Key == input.KeyEscape {
+			if state, ok := app.World.GetResource[*input.State](); ok && state.Composing() {
+				return
+			}
+			c.click("password-cancel")
+			event.Consume()
+		}
 	})
 	if err := app.AddSystem(onix.StageUpdate, ecs.SystemConfig{Name: "quiz_events", System: func(*ecs.SystemContext) error { c.update(); return nil }}); err != nil {
 		app.Destroy()
@@ -125,11 +139,13 @@ func (c *controller) next() {
 	if len(c.queue) == 0 {
 		c.busy = false
 		c.disable("cancel", true)
+		c.updateIdle()
 		return
 	}
 	source := c.queue[0]
 	c.queue = c.queue[1:]
 	c.busy = true
+	c.updateIdle()
 	ctx, cancel := context.WithCancel(context.Background())
 	c.cancel = cancel
 	c.disable("cancel", false)
@@ -139,7 +155,6 @@ func (c *controller) next() {
 	c.nodes["detail"].SetText("正在读取压缩包…")
 	c.nodes["destination"].SetText("")
 	opts := c.options
-	opts.Password = c.password
 	opts.OnProgress = func(p extract.Progress) {
 		c.progressMu.Lock()
 		c.progress = p
@@ -150,7 +165,7 @@ func (c *controller) next() {
 	c.workers.Add(1)
 	go func() {
 		defer c.workers.Done()
-		result, err := extract.Extract(ctx, source, opts)
+		result, err := c.extractWithPassword(ctx, source, opts)
 		cancel()
 		c.finished <- outcome{progress: result, err: err}
 		c.app.RequestRender()
@@ -159,12 +174,23 @@ func (c *controller) next() {
 
 func (c *controller) update() {
 	for event := range c.events.All(c.app.World) {
-		if event.ID == "password" && event.Kind == htmlui.EventInput {
+		if event.ID == "password" && event.Kind == htmlui.EventInput && c.pendingPassword != nil && !c.closing {
 			c.password = event.Value
+			c.disable("password-confirm", c.password == "")
+		}
+		if event.ID == "password" && event.Kind == htmlui.EventSubmit && !c.closing {
+			c.click("password-confirm")
 		}
 		if event.Kind == htmlui.EventClick && !c.closing {
 			c.click(event.ID)
 		}
+	}
+	select {
+	case request := <-c.passwordRequests:
+		if !c.closing && request.ctx.Err() == nil {
+			c.showPassword(request)
+		}
+	default:
 	}
 	c.progressMu.Lock()
 	p, changed := c.progress, c.progressChanged
@@ -202,8 +228,8 @@ func (c *controller) update() {
 	select {
 	case result := <-c.menuFinished:
 		c.menuBusy = false
-		c.disable("install", false)
-		c.disable("uninstall", false)
+		c.disable("install", c.pendingPassword != nil)
+		c.disable("uninstall", c.pendingPassword != nil)
 		if result.err != nil {
 			c.nodes["menu-status"].SetText("操作失败：" + result.err.Error())
 		} else {
@@ -212,12 +238,31 @@ func (c *controller) update() {
 		c.app.RequestRender()
 	default:
 	}
+	c.updateIdle()
 	if c.closing && !c.busy && !c.menuBusy {
 		c.app.RequestClose()
 	}
 }
 
 func (c *controller) click(id string) {
+	if c.pendingPassword != nil {
+		switch id {
+		case "password-confirm":
+			if c.password != "" {
+				c.pendingPassword.reply <- c.password
+				c.hidePassword()
+				c.nodes["state"].SetText("正在解压")
+			}
+		case "password-cancel":
+			if c.cancel != nil {
+				c.cancel()
+			}
+			c.hidePassword()
+		}
+		c.updateIdle()
+		c.app.RequestRender()
+		return
+	}
 	switch id {
 	case "choose":
 		extensions := make([]string, len(extract.Extensions))
@@ -264,7 +309,16 @@ func (c *controller) click(id string) {
 			c.app.RequestRender()
 		}()
 	}
+	c.updateIdle()
 	c.app.RequestRender()
+}
+
+func (c *controller) updateIdle() {
+	idle := (!c.busy || c.pendingPassword != nil) && !c.menuBusy
+	if c.idle != idle {
+		c.idle = idle
+		c.app.SetIdleEnabled(idle)
+	}
 }
 
 func (c *controller) disable(id string, disabled bool) {
@@ -275,11 +329,7 @@ func (c *controller) disable(id string, disabled bool) {
 	}
 }
 func (c *controller) addHistory(line string) {
-	c.history = append(c.history, line)
-	if len(c.history) > 30 {
-		c.history = c.history[len(c.history)-30:]
-	}
-	c.nodes["history"].SetText(strings.Join(c.history, "\n"))
+	c.nodes["history"].SetText(line)
 }
 func byteSize(size int64) string {
 	if size < 1024 {
