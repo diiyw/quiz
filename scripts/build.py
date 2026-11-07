@@ -38,7 +38,7 @@ def notices(destination):
             if item.is_file() and item.name.upper().startswith(("LICENSE", "COPYING", "NOTICE", "THIRD_PARTY")):
                 target.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(item, target / item.name)
-        if module["Path"] == "github.com/diiyw/onix":
+        if module["Path"] == "github.com/onix-engine/onix":
             for relative in ["images/webp/LICENSE", "internal/brotli/LICENSE",
                              "font/resources/SKIA_LICENSE", "testdata/fonts/Noto_Sans_SC/OFL.txt"]:
                 item = source / relative

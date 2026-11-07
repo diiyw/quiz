@@ -67,15 +67,13 @@ Linux 桌面程序需要 X11 / XWayland、OpenGL 和系统字体；文件选择�
 
 ## 本地构建
 
-需要 Go 1.27.3 和 C/C++ 工具链。本项目依赖相邻目录的 Onix，`go.mod` 使用 `replace github.com/diiyw/onix => ../onix`。
+需要 Go 1.27.3 和 C/C++ 工具链。Onix 使用远程 `0.1.1` 标签对应的固定版本，由 Go 自动下载，无需本地引擎目录。模块路径为 `github.com/onix-engine/onix`；无 `v` 前缀的标签由 Go 记录为对应提交的伪版本。
 
 ```sh
-git clone https://github.com/onix-engine/onix.git ../onix
-git -C ../onix checkout "$(cat .onix-revision)"
 go mod download
 go build -o dist/quiz .
 go build -o dist/quiz-cli ./cmd/quiz-cli
-go test -race ./internal/extract ./internal/integration ./internal/cli
+go test -race ./internal/desktop ./internal/extract ./internal/integration ./internal/cli
 ```
 
 Linux 开发库：`libx11-dev libxext-dev libxrender-dev libxi-dev libwayland-dev libxkbcommon-dev libgl1-mesa-dev pkg-config`。Windows 使用 MinGW-w64，macOS 使用 Xcode Command Line Tools。只构建 CLI 时可设置 `CGO_ENABLED=0`。
@@ -98,4 +96,4 @@ git tag -a v0.1.0 -m "Quiz v0.1.0"
 git push origin v0.1.0
 ```
 
-工作流从公共仓库获取 `.onix-revision` 固定的 Onix 提交。Release 仅在所有构建成功后发布，使用 GitHub 自动提供的 `GITHUB_TOKEN`，无需另设 PAT。手动构建保留 Actions artifacts，不创建 Release。
+工作流通过 Go 模块下载 `go.mod` 锁定的远程 Onix 版本。Release 仅在所有构建成功后发布，使用 GitHub 自动提供的 `GITHUB_TOKEN`，无需另设 PAT。手动构建保留 Actions artifacts，不创建 Release。

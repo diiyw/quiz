@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 
 	"github.com/bodgit/sevenzip"
-	"github.com/diiyw/onix/ui"
-	htmlui "github.com/diiyw/onix/ui/html"
 	"github.com/diiyw/quiz/internal/extract"
 	"github.com/nwaples/rardecode/v2"
+	"github.com/onix-engine/onix/ui"
+	htmlui "github.com/onix-engine/onix/ui/html"
 )
 
 type passwordRequest struct {

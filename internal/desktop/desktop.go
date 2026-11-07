@@ -11,15 +11,15 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/diiyw/onix"
-	"github.com/diiyw/onix/ecs"
-	"github.com/diiyw/onix/input"
-	htmlui "github.com/diiyw/onix/ui/html"
-	"github.com/diiyw/onix/window"
-	_ "github.com/diiyw/onix/window/filedialog"
 	"github.com/diiyw/quiz/internal/cli"
 	"github.com/diiyw/quiz/internal/extract"
 	"github.com/diiyw/quiz/internal/integration"
+	"github.com/onix-engine/onix"
+	"github.com/onix-engine/onix/ecs"
+	"github.com/onix-engine/onix/input"
+	htmlui "github.com/onix-engine/onix/ui/html"
+	"github.com/onix-engine/onix/window"
+	_ "github.com/onix-engine/onix/window/filedialog"
 )
 
 //go:embed view.html

@@ -4,9 +4,9 @@ go 1.27.3
 
 require (
 	github.com/bodgit/sevenzip v1.6.1
-	github.com/diiyw/onix v0.0.0
 	github.com/mholt/archives v0.1.5
 	github.com/nwaples/rardecode/v2 v2.2.0
+	github.com/onix-engine/onix v0.0.0-20261107040841-e5ec5303825c // tag 0.1.1
 	golang.org/x/sys v0.49.0
 )
 
@@ -32,5 +32,3 @@ require (
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 	golang.org/x/text v0.29.0 // indirect
 )
-
-replace github.com/diiyw/onix => ../onix

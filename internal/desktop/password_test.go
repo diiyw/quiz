@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"github.com/bodgit/sevenzip"
-	"github.com/diiyw/onix"
-	"github.com/diiyw/onix/scene"
-	notosanssc "github.com/diiyw/onix/testdata/fonts/Noto_Sans_SC"
-	"github.com/diiyw/onix/ui"
-	htmlui "github.com/diiyw/onix/ui/html"
 	"github.com/diiyw/quiz/internal/extract"
 	"github.com/nwaples/rardecode/v2"
+	"github.com/onix-engine/onix"
+	"github.com/onix-engine/onix/scene"
+	notosanssc "github.com/onix-engine/onix/testdata/fonts/Noto_Sans_SC"
+	"github.com/onix-engine/onix/ui"
+	htmlui "github.com/onix-engine/onix/ui/html"
 )
 
 func passwordController(t *testing.T) *controller {
