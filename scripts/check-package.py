@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Exercise binaries from the actual release package on a native runner."""
 import argparse
-import hashlib
 import os
 from pathlib import Path
 import plistlib
@@ -13,9 +12,13 @@ import tempfile
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def smoke(directory, desktop="quiz", cli="quiz-cli"):
-    for binary in [directory / desktop, directory / cli]:
-        subprocess.run([sys.executable, str(ROOT / "scripts/smoke.py"), str(binary)], check=True)
+def smoke(binary):
+    subprocess.run([sys.executable, str(ROOT / "scripts/smoke.py"), str(binary)], check=True)
+    notices = subprocess.check_output([str(binary), "--licenses"], text=True, encoding="utf-8")
+    for dependency in ["github.com/onix-engine/onix/LICENSE", "github.com/mholt/archives/LICENSE",
+                       "github.com/bodgit/sevenzip/LICENSE", "github.com/nwaples/rardecode/v2/LICENSE",
+                       "assets/QuizUI-OFL.txt"]:
+        assert dependency in notices, f"Missing embedded license: {dependency}"
 
 
 def msiexec(*arguments):
@@ -33,19 +36,15 @@ def main():
     if len(packages) != 1:
         parser.error(f"expected one {extension} package in dist, got {len(packages)}")
     package = packages[0]
-    digest = hashlib.sha256()
-    with package.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    assert package.with_name(package.name + ".sha256").read_text().split()[0] == digest.hexdigest()
     with tempfile.TemporaryDirectory(prefix="quiz-package-") as temporary:
         directory = Path(temporary)
         if args.os == "linux":
             with tarfile.open(package) as archive:
                 archive.extractall(directory, filter="data")
             installed = next(directory.iterdir())
-            assert (installed / "quiz.svg").is_file()
-            smoke(installed)
+            assert {item.name for item in directory.iterdir()} == {installed.name}
+            assert {item.name for item in installed.iterdir()} == {"quiz"}
+            smoke(installed / "quiz")
         elif args.os == "darwin":
             mount = directory / "mount"
             subprocess.run(["hdiutil", "attach", "-readonly", "-nobrowse", "-mountpoint",
@@ -56,9 +55,10 @@ def main():
                     info = plistlib.load(stream)
                 assert (contents / "Resources" / info["CFBundleIconFile"]).is_file()
                 assert (mount / "Applications").is_symlink()
+                assert {item.name for item in mount.iterdir() if not item.name.startswith(".")} == {"Quiz.app", "Applications"}
                 subprocess.run(["codesign", "--verify", "--deep", "--strict",
                                 str(mount / "Quiz.app")], check=True)
-                smoke(mount, "Quiz.app/Contents/MacOS/quiz")
+                smoke(contents / "MacOS/quiz")
             finally:
                 subprocess.run(["hdiutil", "detach", str(mount)], check=True)
         else:
@@ -71,9 +71,8 @@ def main():
                 msiexec("/i", str(package), "/qn", "/norestart", f"INSTALLFOLDER={installed}",
                         "/l*v", str(log))
                 assert (Path(os.environ["APPDATA"]) / "Microsoft/Windows/Start Menu/Programs/Quiz/Quiz.lnk").is_file()
-                assert (installed / "THIRD_PARTY_NOTICES.md").is_file()
-                assert (installed / "licenses").is_dir()
-                smoke(installed, "quiz.exe", "quiz-cli.exe")
+                assert {item.name for item in installed.iterdir()} == {"quiz.exe"}
+                smoke(installed / "quiz.exe")
             except Exception:
                 if log.exists():
                     print(log.read_text(encoding="utf-16", errors="replace"))

@@ -5,27 +5,32 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #f7f6f3; color: #2f3437; font-family: sans-serif; font-size: 13px; }
 body { padding: 10px 16px; }
+[hidden] { display: none; }
 p { margin: 0; line-height: 18px; }
 .header { display: flex; align-items: center; justify-content: space-between; height: 30px; padding-bottom: 6px; border-bottom: 1px solid #e5e3dd; }
 .brand { font-size: 22px; font-weight: 700; letter-spacing: 2px; }
 .state { color: #346538; font-size: 12px; }
 .muted { color: #72766e; }
 .small { font-size: 12px; }
-.drop { margin-top: 8px; height: 48px; padding: 8px 12px; background: #ffffff; border: 1px solid #dedfd7; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.drop-title { font-size: 14px; font-weight: 600; }
+.workspace { margin-top: 8px; height: 144px; padding: 12px 14px; background: #ffffff; border: 1px solid #dedfd7; border-radius: 8px; }
+.workspace-top { display: flex; align-items: center; gap: 16px; height: 48px; }
+.task-copy { flex: 1; min-width: 0; }
+.task-name { font-size: 16px; font-weight: 600; height: 24px; line-height: 24px; }
 button { flex-shrink: 0; font-family: sans-serif; font-size: 12px; height: 28px; padding: 4px 12px; border: 1px solid #dedfd7; border-radius: 4px; color: #2f3437; background: #ffffff; cursor: pointer; white-space: nowrap; }
 button:hover { background: #efeee9; }
+button:active { background: #e5e8df; }
 button:focus, input:focus { outline: 2px solid #548061; }
 button:disabled { opacity: .4; cursor: default; }
 .primary { height: 32px; background: #2f3932; color: #ffffff; border-color: #2f3932; }
 .primary:hover { background: #455447; }
 input { display: block; width: 100%; font-family: sans-serif; font-size: 13px; height: 32px; border: 1px solid #dedfd7; border-radius: 4px; background: #ffffff; color: #2f3437; padding: 6px 10px; }
-.task { margin-top: 8px; background: #eeefe9; padding: 8px 12px; border-radius: 6px; }
-.task-row { display: flex; align-items: center; gap: 10px; height: 28px; }
-.task-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; height: 20px; line-height: 20px; }
 #filename, #detail, #destination { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 #detail, #destination { height: 18px; }
+#destination { margin-top: 4px; }
+.workspace-bottom { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 38px; margin-top: 10px; padding-top: 8px; border-top: 1px solid #eeefe9; }
+.drop-hint { flex: 1; min-width: 0; color: #72766e; font-size: 12px; white-space: nowrap; }
 .actions { display: flex; flex-shrink: 0; gap: 8px; }
+.actions button:disabled { display: none; }
 .footer { margin-top: 8px; padding-top: 4px; border-top: 1px solid #e5e3dd; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
 .feedback { flex: 1; min-width: 0; }
 #history, #menu-status { height: 18px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; line-height: 18px; color: #72766e; }
@@ -36,14 +41,34 @@ input { display: block; width: 100%; font-family: sans-serif; font-size: 13px; h
 .modal[hidden] { display: none; }
 .dialog { width: 360px; padding: 16px; border: 1px solid #dedfd7; border-radius: 6px; background: #f7f6f3; }
 .dialog-title { font-size: 16px; font-weight: 600; }
+.error-dialog { width: 520px; max-width: calc(100% - 32px); }
+#error-message { height: 96px; margin-top: 10px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
 #password-file { margin-top: 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 #password-message { display: block; margin: 8px 0 6px; font-size: 12px; color: #72766e; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.extraction-view { padding: 24px 8px; }
+#extraction-title { font-size: 18px; font-weight: 600; line-height: 26px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.progress-track { height: 8px; margin-top: 24px; overflow: hidden; border-radius: 4px; background: #e5e8df; }
+.progress-fill { width: 30%; height: 100%; border-radius: 4px; background: #548061; animation: extracting 1.2s ease-in-out infinite alternate; }
+.progress-track.paused .progress-fill { animation-play-state: paused; }
+.extraction-actions { display: flex; justify-content: flex-end; margin-top: 24px; }
+@keyframes extracting { from { transform: translateX(0%); } to { transform: translateX(233%); } }
 </style></head>
 <body>
+<div id="main-view">
 <div class="header"><span class="brand">QUIZ</span><span id="state" class="state">准备就绪</span></div>
-<div class="drop"><p class="drop-title">拖入压缩包</p><button id="choose" class="primary">选择文件解压</button></div>
-<div class="task"><div class="task-row"><p id="filename" class="task-name">等待选择文件</p><div class="actions"><button id="cancel" disabled>取消全部</button><button id="open" disabled>打开文件夹</button></div></div><p id="detail" class="muted small">解压到同名文件夹</p><p id="destination" class="muted small"></p></div>
+<main class="workspace" aria-label="拖入压缩包即可解压">
+  <div class="workspace-top"><div class="task-copy"><p id="filename" class="task-name">拖入压缩包，即刻解压</p><p id="detail" class="muted small">自动解压到压缩包旁的同名文件夹</p></div><button id="choose" class="primary">选择并解压</button></div>
+  <p id="destination" class="muted small"></p>
+  <div class="workspace-bottom"><p class="drop-hint">支持多文件拖入 · 自动排队解压</p><div class="actions"><button id="cancel" disabled>取消全部</button><button id="open" disabled>打开文件夹</button></div></div>
+</main>
 <div class="footer"><div class="feedback"><p id="history"></p><p id="menu-status"></p></div><div class="menu-actions"><button id="install">安装右键菜单</button><button id="uninstall">移除菜单</button></div></div>
+</div>
+<main id="extraction-view" class="extraction-view" hidden>
+  <p id="extraction-title">解压中</p>
+  <div id="extraction-progress" class="progress-track" role="progressbar" aria-labelledby="extraction-title"><div class="progress-fill"></div></div>
+  <div class="extraction-actions"><button id="extraction-cancel">取消</button></div>
+</main>
 <div id="password-dialog" class="modal" hidden><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="password-title" aria-describedby="password-file"><p id="password-title" class="dialog-title">需要密码</p><p id="password-file" class="muted small"></p><label id="password-message" for="password">请输入压缩包密码</label><input id="password" type="password" autocomplete="off"><div class="dialog-actions"><button id="password-cancel">取消</button><button id="password-confirm" class="primary" disabled>继续解压</button></div></div></div>
+<div id="error-dialog" class="modal" hidden><div class="dialog error-dialog" role="alertdialog" aria-modal="true" aria-labelledby="error-title" aria-describedby="error-message"><p id="error-title" class="dialog-title">解压失败</p><div id="error-message"></div><div class="dialog-actions"><button id="error-confirm" class="primary">确定</button></div></div></div>
 </body></html>

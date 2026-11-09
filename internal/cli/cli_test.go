@@ -13,12 +13,20 @@ func TestArgumentsAndDesktopDispatch(t *testing.T) {
 	called := false
 	desktop := func(r Request) error {
 		called = true
-		if len(r.Files) != 1 || r.Files[0] != "-file.zip" {
+		if len(r.Files) != 1 || r.Files[0] != "-file.zip" || !r.Extract {
 			t.Fatal(r)
 		}
 		return nil
 	}
 	if code := Run([]string{"--extract", "--", "-file.zip"}, desktop, &output, &output); code != 0 || !called {
+		t.Fatal(code, output.String())
+	}
+	if code := Run([]string{"file.zip"}, func(r Request) error {
+		if r.Extract {
+			t.Fatal("ordinary desktop launch enabled automatic exit")
+		}
+		return nil
+	}, &output, &output); code != 0 {
 		t.Fatal(code, output.String())
 	}
 	for _, args := range [][]string{{"--help"}, {"--max-bytes", "0"}, {"--install-menu", "--uninstall-menu"}, {"--password-env", "QUIZ_TEST_UNSET"}} {

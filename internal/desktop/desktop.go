@@ -57,33 +57,48 @@ type controller struct {
 	menuBusy         bool
 	closing          bool
 	idle             bool
+	exitOnSuccess    bool
+	batchFailed      bool
+	errorVisible     bool
+	errorMessages    []string
 }
 
 func Run(request cli.Request) error {
+	font, err := interfaceFont()
+	if err != nil {
+		return fmt.Errorf("加载界面字体：%w", err)
+	}
 	app := onix.NewApp()
 	app.SetRenderMode(onix.RenderOnDemand)
 	app.SetIdleEnabled(true)
 	if err := app.InstallSystems[onix.UIHTML](); err != nil {
 		return err
 	}
-	app.SetWindowSize(600, 244)
-	app.SetWindowTitle("Quiz · 解压工具")
+	if request.Extract && len(request.Files) > 0 {
+		app.SetWindowSize(460, 220)
+		app.SetWindowTitle("解压中")
+	} else {
+		app.SetWindowSize(600, 244)
+		app.SetWindowTitle("Quiz · 解压工具")
+	}
 	app.Context.SetIconDecoder(windowpng.Decoder{})
 	if err := app.SetWindowIcon(assets.IconPNG); err != nil {
 		app.Destroy()
 		return fmt.Errorf("设置应用图标：%w", err)
 	}
 	surface := htmlui.New(view)
+	surface.Font = font
 	spawner := app.World.NewSpawner1[htmlui.Surface]()
 	owner := spawner.Spawn(surface)
 	c := &controller{app: app, nodes: make(map[string]htmlui.Node), finished: make(chan outcome, 1), menuFinished: make(chan menuOutcome, 1), passwordRequests: make(chan passwordRequest, 1), options: request.Options, idle: true}
+	c.exitOnSuccess = request.Extract && len(request.Files) > 0
 	defer func() {
 		if c.cancel != nil {
 			c.cancel()
 		}
 		c.workers.Wait()
 	}()
-	for _, id := range []string{"choose", "password", "password-dialog", "password-file", "password-message", "password-confirm", "password-cancel", "state", "filename", "detail", "destination", "cancel", "open", "history", "install", "uninstall", "menu-status"} {
+	for _, id := range []string{"main-view", "extraction-view", "extraction-title", "extraction-progress", "extraction-cancel", "choose", "password", "password-dialog", "password-file", "password-message", "password-confirm", "password-cancel", "error-dialog", "error-message", "error-confirm", "state", "filename", "detail", "destination", "cancel", "open", "history", "install", "uninstall", "menu-status"} {
 		node, ok := htmlui.NodeByID(app.World, owner, id)
 		if !ok {
 			app.Destroy()
@@ -91,8 +106,9 @@ func Run(request cli.Request) error {
 		}
 		c.nodes[id] = node
 	}
+	c.configureView()
 	app.OnFilesDropped(func(_, _ float64, files []string) {
-		if !c.closing {
+		if !c.exitOnSuccess && !c.closing && c.pendingPassword == nil && !c.errorVisible {
 			c.enqueue(files)
 		}
 	})
@@ -112,11 +128,15 @@ func Run(request cli.Request) error {
 		return false
 	})
 	app.AddInputHandler(input.PhaseGlobal, func(event *input.Dispatch) {
-		if c.pendingPassword != nil && event.Event.Kind == input.EventKeyDown && event.Event.Key == input.KeyEscape {
+		if (c.pendingPassword != nil || c.errorVisible) && event.Event.Kind == input.EventKeyDown && event.Event.Key == input.KeyEscape {
 			if state, ok := app.World.GetResource[*input.State](); ok && state.Composing() {
 				return
 			}
-			c.click("password-cancel")
+			if c.errorVisible {
+				c.click("error-confirm")
+			} else {
+				c.click("password-cancel")
+			}
 			event.Consume()
 		}
 	})
@@ -128,25 +148,42 @@ func Run(request cli.Request) error {
 	return app.Run()
 }
 
+func (c *controller) configureView() {
+	c.nodes["main-view"].SetHidden(c.exitOnSuccess)
+	c.nodes["extraction-view"].SetHidden(!c.exitOnSuccess)
+}
+
 func (c *controller) enqueue(files []string) {
 	for _, file := range files {
 		if !extract.Supported(file) {
-			c.addHistory("不支持：" + filepath.Base(file))
+			c.batchFailed = true
+			c.errorMessages = append(c.errorMessages, "不支持的压缩文件："+file)
 			continue
 		}
 		c.queue = append(c.queue, file)
 	}
 	if !c.busy {
+		if len(c.errorMessages) > 0 {
+			c.showError("")
+		}
 		c.next()
 	}
 	c.app.RequestRender()
 }
 
 func (c *controller) next() {
+	if c.closing || c.errorVisible {
+		c.disable("cancel", true)
+		c.updateIdle()
+		return
+	}
 	if len(c.queue) == 0 {
 		c.busy = false
 		c.disable("cancel", true)
 		c.updateIdle()
+		if c.exitOnSuccess && !c.batchFailed {
+			c.closing = true
+		}
 		return
 	}
 	source := c.queue[0]
@@ -212,6 +249,7 @@ func (c *controller) update() {
 		c.busy = false
 		c.cancel = nil
 		if result.err != nil {
+			c.batchFailed = true
 			label := "解压失败"
 			if errors.Is(result.err, context.Canceled) {
 				label = "已取消"
@@ -220,6 +258,9 @@ func (c *controller) update() {
 			c.nodes["state"].SetText(label)
 			c.nodes["detail"].SetText(result.err.Error())
 			c.addHistory(label + " · " + result.err.Error())
+			if !errors.Is(result.err, context.Canceled) && !c.closing {
+				c.showError(result.err.Error())
+			}
 		} else {
 			c.lastDestination = result.progress.Destination
 			c.disable("open", false)
@@ -228,6 +269,9 @@ func (c *controller) update() {
 			c.nodes["destination"].SetText(c.lastDestination)
 			c.addHistory("已完成 · " + c.lastDestination)
 		}
+		if len(c.errorMessages) > 0 && !c.errorVisible && !c.closing {
+			c.showError("")
+		}
 		c.next()
 		c.app.RequestRender()
 	default:
@@ -235,8 +279,8 @@ func (c *controller) update() {
 	select {
 	case result := <-c.menuFinished:
 		c.menuBusy = false
-		c.disable("install", c.pendingPassword != nil)
-		c.disable("uninstall", c.pendingPassword != nil)
+		c.disable("install", c.pendingPassword != nil || c.errorVisible)
+		c.disable("uninstall", c.pendingPassword != nil || c.errorVisible)
 		if result.err != nil {
 			c.nodes["menu-status"].SetText("操作失败：" + result.err.Error())
 		} else {
@@ -252,6 +296,16 @@ func (c *controller) update() {
 }
 
 func (c *controller) click(id string) {
+	if c.errorVisible {
+		if id == "error-confirm" {
+			c.hideError()
+			if !c.busy {
+				c.next()
+			}
+		}
+		c.app.RequestRender()
+		return
+	}
 	if c.pendingPassword != nil {
 		switch id {
 		case "password-confirm":
@@ -261,6 +315,10 @@ func (c *controller) click(id string) {
 				c.nodes["state"].SetText("正在解压")
 			}
 		case "password-cancel":
+			if c.exitOnSuccess {
+				c.closing = true
+				c.queue = nil
+			}
 			if c.cancel != nil {
 				c.cancel()
 			}
@@ -282,8 +340,11 @@ func (c *controller) click(id string) {
 			return
 		}
 		c.enqueue(files)
-	case "cancel":
+	case "cancel", "extraction-cancel":
 		c.queue = nil
+		if c.exitOnSuccess {
+			c.closing = true
+		}
 		if c.cancel != nil {
 			c.cancel()
 			c.nodes["state"].SetText("正在取消并清理…")
@@ -321,6 +382,23 @@ func (c *controller) click(id string) {
 }
 
 func (c *controller) updateIdle() {
+	if c.exitOnSuccess {
+		title := "解压中"
+		if c.closing {
+			title = "正在清理，请稍候"
+		} else if c.pendingPassword != nil {
+			title = "等待密码"
+		} else if !c.busy && c.batchFailed {
+			title = "解压失败"
+		}
+		c.nodes["extraction-title"].SetText(title)
+		c.disable("extraction-cancel", c.closing || c.pendingPassword != nil || c.errorVisible)
+		class := "progress-track"
+		if c.closing || !c.busy || c.pendingPassword != nil || c.errorVisible {
+			class += " paused"
+		}
+		c.nodes["extraction-progress"].SetAttribute("class", class)
+	}
 	idle := (!c.busy || c.pendingPassword != nil) && !c.menuBusy
 	if c.idle != idle {
 		c.idle = idle

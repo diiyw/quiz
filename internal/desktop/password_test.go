@@ -14,7 +14,6 @@ import (
 	"github.com/nwaples/rardecode/v2"
 	"github.com/onix-engine/onix"
 	"github.com/onix-engine/onix/scene"
-	notosanssc "github.com/onix-engine/onix/testdata/fonts/Noto_Sans_SC"
 	"github.com/onix-engine/onix/ui"
 	htmlui "github.com/onix-engine/onix/ui/html"
 )
@@ -28,11 +27,15 @@ func passwordController(t *testing.T) *controller {
 		t.Fatal(err)
 	}
 	surface := htmlui.New(view)
-	surface.Width, surface.Height, surface.Font = 600, 244, notosanssc.NotoSansSCRegular
+	font, err := interfaceFont()
+	if err != nil {
+		t.Fatal(err)
+	}
+	surface.Width, surface.Height, surface.Font = 600, 244, font
 	spawner := app.World.NewSpawner1[htmlui.Surface]()
 	owner := spawner.Spawn(surface)
 	c := &controller{app: app, nodes: make(map[string]htmlui.Node), finished: make(chan outcome, 1), menuFinished: make(chan menuOutcome, 1), passwordRequests: make(chan passwordRequest, 1), idle: true}
-	for _, id := range []string{"choose", "password", "password-dialog", "password-file", "password-message", "password-confirm", "password-cancel", "state", "filename", "detail", "destination", "cancel", "open", "history", "install", "uninstall", "menu-status"} {
+	for _, id := range []string{"main-view", "extraction-view", "extraction-title", "extraction-progress", "extraction-cancel", "choose", "password", "password-dialog", "password-file", "password-message", "password-confirm", "password-cancel", "error-dialog", "error-message", "error-confirm", "state", "filename", "detail", "destination", "cancel", "open", "history", "install", "uninstall", "menu-status"} {
 		node, ok := htmlui.NodeByID(app.World, owner, id)
 		if !ok {
 			t.Fatalf("missing node %s", id)

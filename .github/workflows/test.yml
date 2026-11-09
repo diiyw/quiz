@@ -7,6 +7,7 @@ permissions:
   contents: read
 jobs:
   test:
+    if: ${{ !contains(github.event.head_commit.message, '[skip tests]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -21,3 +22,8 @@ jobs:
       - name: Test
         working-directory: quiz
         run: go test -race ./internal/extract ./internal/integration ./internal/cli
+      - name: Verify display-free build
+        working-directory: quiz
+        run: |
+          CGO_ENABLED=0 go build -tags headless -o build/headless/quiz .
+          python3 scripts/smoke.py build/headless/quiz

@@ -1,4 +1,4 @@
-// Package cli is shared by the desktop launcher and the display-free executable.
+// Package cli handles arguments for desktop and headless builds of Quiz.
 package cli
 
 import (
@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/diiyw/quiz/assets"
 	"github.com/diiyw/quiz/internal/extract"
 	"github.com/diiyw/quiz/internal/integration"
 )
@@ -16,20 +17,25 @@ import (
 type Request struct {
 	Files   []string
 	Options extract.Options
+	Extract bool
 }
 type Desktop func(Request) error
 
 // Version is set by the release build.
 var Version = "dev"
 
+// ThirdPartyNotices is populated with dependency license texts by the release build.
+var ThirdPartyNotices = "See THIRD_PARTY_NOTICES.md and the license files in the Go module dependencies.\n\n" + assets.UIFontLicense
+
 func Run(args []string, desktop Desktop, out, stderr io.Writer) int {
 	flags := flag.NewFlagSet("quiz", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	headless := flags.Bool("headless", desktop == nil, "不打开窗口，在终端解压")
-	_ = flags.Bool("extract", false, "立即解压指定文件（右键菜单使用）")
+	extractNow := flags.Bool("extract", false, "立即解压指定文件，成功后退出（右键菜单使用）")
 	install := flags.Bool("install-menu", false, "安装当前用户的右键菜单")
 	uninstall := flags.Bool("uninstall-menu", false, "移除当前用户的右键菜单")
 	version := flags.Bool("version", false, "显示版本")
+	licenses := flags.Bool("licenses", false, "显示第三方许可")
 	passwordEnv := flags.String("password-env", "", "从指定环境变量读取 7Z / RAR 密码")
 	maxBytes := flags.Int64("max-bytes", 100<<30, "每个压缩包的最大解压字节数")
 	maxEntries := flags.Int("max-entries", 1_000_000, "每个压缩包的最大条目数")
@@ -49,6 +55,10 @@ func Run(args []string, desktop Desktop, out, stderr io.Writer) int {
 	}
 	if *version {
 		fmt.Fprintln(out, "Quiz", Version)
+		return 0
+	}
+	if *licenses {
+		fmt.Fprintln(out, ThirdPartyNotices)
 		return 0
 	}
 	if *install || *uninstall {
@@ -74,7 +84,7 @@ func Run(args []string, desktop Desktop, out, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "解压大小和条目上限必须大于 0")
 		return 2
 	}
-	request := Request{Files: flags.Args(), Options: extract.Options{MaxBytes: *maxBytes, MaxEntries: *maxEntries}}
+	request := Request{Files: flags.Args(), Options: extract.Options{MaxBytes: *maxBytes, MaxEntries: *maxEntries}, Extract: *extractNow}
 	if *passwordEnv != "" {
 		var exists bool
 		request.Options.Password, exists = os.LookupEnv(*passwordEnv)

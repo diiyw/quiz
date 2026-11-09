@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Build the desktop app and CLI as Linux tar.gz, macOS DMG or Windows MSI."""
+"""Package only the desktop app as Linux tar.gz, macOS DMG or Windows MSI."""
 import argparse
-from contextlib import nullcontext
-import hashlib
+from contextlib import contextmanager, nullcontext
 import json
 import os
 from pathlib import Path
@@ -21,8 +20,11 @@ def run(*args, **kwargs):
     subprocess.run(args, cwd=ROOT, check=True, **kwargs)
 
 
-def notices(destination):
-    """Collect license/notice files from every module shipped by the Go graph."""
+def notices():
+    """Collect license texts for embedding without shipping loose files."""
+    sections = [(ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8"),
+                "\n\n===== assets/QuizUI-OFL.txt =====\n\n"
+                + (ROOT / "assets/QuizUI-OFL.txt").read_text(encoding="utf-8")]
     data = subprocess.check_output(["go", "list", "-m", "-json", "all"], cwd=ROOT, text=True)
     decoder = json.JSONDecoder()
     while data.strip():
@@ -35,18 +37,34 @@ def notices(destination):
         if not directory:
             continue
         source = Path(directory)
-        target = destination / "licenses" / module["Path"].replace("/", "_")
-        for item in source.iterdir():
+        files = []
+        for item in sorted(source.iterdir()):
             if item.is_file() and item.name.upper().startswith(("LICENSE", "COPYING", "NOTICE", "THIRD_PARTY")):
-                target.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(item, target / item.name)
+                files.append(item)
         if module["Path"] == "github.com/onix-engine/onix":
             for relative in ["images/webp/LICENSE", "internal/brotli/LICENSE",
-                             "font/resources/SKIA_LICENSE", "testdata/fonts/Noto_Sans_SC/OFL.txt"]:
+                             "font/resources/SKIA_LICENSE"]:
                 item = source / relative
                 if item.is_file():
-                    (target / relative).parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(item, target / relative)
+                    files.append(item)
+        for item in files:
+            sections.append(f"\n\n===== {module['Path']}/{item.relative_to(source).as_posix()} =====\n\n"
+                            + item.read_text(encoding="utf-8"))
+    return "".join(sections)
+
+
+@contextmanager
+def embedded_notices():
+    """Include full dependency licenses in the binary and clean up build inputs."""
+    source = ROOT / "internal/cli/third_party_notices_generated.go"
+    if source.exists():
+        raise RuntimeError(f"Refusing to overwrite {source}")
+    content = json.dumps(notices(), ensure_ascii=False)
+    try:
+        source.write_text(f"package cli\n\nfunc init() {{ ThirdPartyNotices = {content} }}\n", encoding="utf-8")
+        yield
+    finally:
+        source.unlink(missing_ok=True)
 
 
 def main():
@@ -86,16 +104,8 @@ def main():
                           "NSHighResolutionCapable": True}, f)
     if args.os == "windows":
         flags += " -H windowsgui -extldflags=-static"
-    with windows_resources(args.arch) if args.os == "windows" else nullcontext():
+    with embedded_notices(), windows_resources(args.arch) if args.os == "windows" else nullcontext():
         run("go", "build", "-trimpath", "-ldflags", flags, "-o", str(binary), ".", env=environment)
-    environment["CGO_ENABLED"] = "0"
-    cli_flags = f"-s -w -X github.com/diiyw/quiz/internal/cli.Version={args.version}"
-    run("go", "build", "-trimpath", "-ldflags", cli_flags, "-o", str(stage / ("quiz-cli" + extension)), "./cmd/quiz-cli", env=environment)
-    for filename in ["README.md", "THIRD_PARTY_NOTICES.md"]:
-        shutil.copy2(ROOT / filename, stage / filename)
-    notices(stage)
-    if args.os == "linux":
-        shutil.copy2(ROOT / "assets/icon.svg", stage / "quiz.svg")
     if args.os == "darwin" and shutil.which("codesign"):
         run("codesign", "--force", "--deep", "--sign", "-", str(stage / "Quiz.app"))
         run("codesign", "--verify", "--deep", "--strict", str(stage / "Quiz.app"))
@@ -109,11 +119,6 @@ def main():
         archive = dist / (name + ".tar.gz")
         with tarfile.open(archive, "w:gz") as tar:
             tar.add(stage, arcname=name)
-    digest = hashlib.sha256()
-    with archive.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    archive.with_name(archive.name + ".sha256").write_text(f"{digest.hexdigest()}  {archive.name}\n")
     print(archive)
 
 

@@ -18,17 +18,19 @@ Quiz 是一款适用于 Windows、macOS 和 Linux 的桌面解压工具。拖入
 
 ## 下载与安装
 
-当前版本：**v0.1.3**。根据你的系统和处理器选择下载：
+当前版本：**v0.1.4**。根据你的系统和处理器选择下载：
 
 | 系统 | 下载 | 安装方式 |
 | --- | --- | --- |
-| Windows 64 位 | [MSI 安装包](https://github.com/diiyw/quiz/releases/download/v0.1.3/quiz-v0.1.3-windows-amd64.msi) | 双击安装，从开始菜单打开 Quiz |
-| macOS Apple 芯片（M 系列） | [DMG 安装包](https://github.com/diiyw/quiz/releases/download/v0.1.3/quiz-v0.1.3-darwin-arm64.dmg) | 打开 DMG，将 `Quiz.app` 拖入 Applications（应用程序） |
-| macOS Intel 芯片 | [DMG 安装包](https://github.com/diiyw/quiz/releases/download/v0.1.3/quiz-v0.1.3-darwin-amd64.dmg) | 打开 DMG，将 `Quiz.app` 拖入 Applications（应用程序） |
-| Linux x64 | [tar.gz 压缩包](https://github.com/diiyw/quiz/releases/download/v0.1.3/quiz-v0.1.3-linux-amd64.tar.gz) | 解压后运行目录中的 `quiz` |
-| Linux ARM64 | [tar.gz 压缩包](https://github.com/diiyw/quiz/releases/download/v0.1.3/quiz-v0.1.3-linux-arm64.tar.gz) | 解压后运行目录中的 `quiz` |
+| Windows 64 位 | [MSI 安装包](https://github.com/diiyw/quiz/releases/download/v0.1.4/quiz-v0.1.4-windows-amd64.msi) | 双击安装，从开始菜单打开 Quiz |
+| macOS Apple 芯片（M 系列） | [DMG 安装包](https://github.com/diiyw/quiz/releases/download/v0.1.4/quiz-v0.1.4-darwin-arm64.dmg) | 打开 DMG，将 `Quiz.app` 拖入 Applications（应用程序） |
+| macOS Intel 芯片 | [DMG 安装包](https://github.com/diiyw/quiz/releases/download/v0.1.4/quiz-v0.1.4-darwin-amd64.dmg) | 打开 DMG，将 `Quiz.app` 拖入 Applications（应用程序） |
+| Linux x64 | [tar.gz 压缩包](https://github.com/diiyw/quiz/releases/download/v0.1.4/quiz-v0.1.4-linux-amd64.tar.gz) | 解压后运行目录中的 `quiz` |
+| Linux ARM64 | [tar.gz 压缩包](https://github.com/diiyw/quiz/releases/download/v0.1.4/quiz-v0.1.4-linux-arm64.tar.gz) | 解压后运行目录中的 `quiz` |
 
 Windows 安装只对当前用户生效，无需管理员权限。
+
+安装包只包含桌面应用，不附带独立 CLI、说明文档或校验文件。第三方许可已嵌入应用，可通过 `--licenses` 查看。
 
 macOS 需要 **13.0 或更新版本**。可在“关于本机”中查看芯片类型。应用尚未经过 Apple 公证，首次打开如被系统拦截，请在“系统设置 → 隐私与安全性”中允许打开。
 
@@ -53,6 +55,8 @@ Linux 需要支持 X11 / XWayland 和 OpenGL 的图形桌面。x64 包基于 Ubu
 ## 在右键菜单中使用
 
 在 Quiz 窗口中点击“安装右键菜单”，然后重新打开文件管理器。选中压缩包后右键，选择“用 Quiz 解压到同名文件夹”。
+
+右键启动时仅显示“解压中”窗口，包含标题、滚动进度条和取消按钮，全部任务成功后自动关闭。点击取消会停止全部任务，清理未完成的内容后关闭窗口。解压失败时会弹窗显示完整错误；批量任务在点击“确定”后继续处理剩余文件，并保留窗口。手动打开 Quiz 进行解压时，完成后窗口会保留。
 
 | 文件管理器 | 菜单位置 |
 | --- | --- |
@@ -104,15 +108,15 @@ Quiz 会自动创建带编号的新文件夹，例如 `照片 (2)`，保护已�
 
 ## 命令行使用（可选）
 
-下载包中也包含 `quiz-cli`（Windows 为 `quiz-cli.exe`）。在终端进入程序所在目录后运行：
+桌面应用支持通过 `--headless` 在终端解压。在 Linux 程序所在目录运行：
 
 ```sh
-./quiz-cli -- archive.zip archive.7z
-./quiz-cli --password-env QUIZ_PASSWORD -- private.7z
-./quiz-cli --help
+./quiz --headless -- archive.zip archive.7z
+./quiz --headless --password-env QUIZ_PASSWORD -- private.7z
+./quiz --help
 ```
 
-Windows PowerShell 中将 `./quiz-cli` 换成 `.\quiz-cli.exe`。`--password-env` 从指定的环境变量读取密码，使用前需设置该变量。
+macOS 中将 `./quiz` 换成 `/Applications/Quiz.app/Contents/MacOS/quiz`；Windows PowerShell 中进入安装目录，将其换成 `.\quiz.exe`。`--password-env` 从指定的环境变量读取密码，使用前需设置该变量。
 
 ---
 
