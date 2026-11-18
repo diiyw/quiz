@@ -12,6 +12,7 @@ import subprocess
 import tarfile
 
 from native_packages import numeric_version, package_dmg, package_msi, windows_resources
+from engine_patch import patched_engine
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -104,8 +105,8 @@ def main():
                           "NSHighResolutionCapable": True}, f)
     if args.os == "windows":
         flags += " -H windowsgui -extldflags=-static"
-    with embedded_notices(), windows_resources(args.arch) if args.os == "windows" else nullcontext():
-        run("go", "build", "-trimpath", "-ldflags", flags, "-o", str(binary), ".", env=environment)
+    with embedded_notices(), windows_resources(args.arch) if args.os == "windows" else nullcontext(), patched_engine() as modfile:
+        run("go", "build", "-modfile", str(modfile), "-trimpath", "-ldflags", flags, "-o", str(binary), ".", env=environment)
     if args.os == "darwin" and shutil.which("codesign"):
         run("codesign", "--force", "--deep", "--sign", "-", str(stage / "Quiz.app"))
         run("codesign", "--verify", "--deep", "--strict", str(stage / "Quiz.app"))

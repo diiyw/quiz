@@ -12,6 +12,8 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent.parent
 WIX_NAMESPACE = "http://wixtoolset.org/schemas/v4/wxs"
+WIX_UI_NAMESPACE = WIX_NAMESPACE + "/ui"
+WIX_UI_EXTENSION = "WixToolset.UI.wixext/6.0.2"
 UPGRADE_CODE = "A33D2EC3-2C40-4DDD-B1DF-882A9B835D78"
 
 
@@ -57,6 +59,7 @@ def package_dmg(stage, output):
 def msi_source(stage, version, arch):
     """Use stable component identities so upgrades remove the previous install."""
     ET.register_namespace("", WIX_NAMESPACE)
+    ET.register_namespace("ui", WIX_UI_NAMESPACE)
 
     def element(parent, tag, **attributes):
         return ET.SubElement(parent, f"{{{WIX_NAMESPACE}}}{tag}", attributes)
@@ -73,6 +76,14 @@ def msi_source(stage, version, arch):
     element(package, "Icon", Id="QuizIcon", SourceFile=str(ROOT / "assets/icon.ico"))
     element(package, "Property", Id="ARPPRODUCTICON", Value="QuizIcon")
     element(package, "Property", Id="ARPURLINFOABOUT", Value="https://github.com/diiyw/quiz")
+    ET.SubElement(package, f"{{{WIX_UI_NAMESPACE}}}WixUI",
+                  Id="WixUI_InstallDir", InstallDirectory="INSTALLFOLDER")
+    # Quiz has no EULA. Go straight from Welcome to directory selection.
+    ui = element(package, "UI")
+    element(ui, "Publish", Dialog="WelcomeDlg", Control="Next", Event="NewDialog",
+            Value="InstallDirDlg", Order="2", Condition="NOT Installed")
+    element(ui, "Publish", Dialog="InstallDirDlg", Control="Back", Event="NewDialog",
+            Value="WelcomeDlg", Order="2")
     location = element(package, "Property", Id="INSTALLFOLDER", Secure="yes")
     element(location, "RegistrySearch", Id="PreviousInstallFolder", Root="HKCU",
             Key=r"Software\diiyw\Quiz\Installer", Name="InstallFolder", Type="raw")
@@ -132,6 +143,8 @@ def package_msi(stage, output, version, arch):
     intermediate.mkdir(exist_ok=True)
     source = intermediate / "Quiz.wxs"
     source.write_text(msi_source(stage, version, arch), encoding="utf-8")
+    subprocess.run(["wix", "extension", "add", "-g", WIX_UI_EXTENSION], check=True)
     subprocess.run(["wix", "build", "-arch", "x64" if arch == "amd64" else "arm64",
+                    "-ext", WIX_UI_EXTENSION,
                     "-intermediatefolder", str(intermediate), "-pdbtype", "none",
                     "-o", str(output), str(source)], check=True)

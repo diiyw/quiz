@@ -18,15 +18,15 @@ Quiz 是一款适用于 Windows、macOS 和 Linux 的桌面解压工具。拖入
 
 ## 下载与安装
 
-当前版本：**v0.1.4**。根据你的系统和处理器选择下载：
+当前版本：**v0.1.5**。根据你的系统和处理器选择下载：
 
 | 系统 | 下载 | 安装方式 |
 | --- | --- | --- |
-| Windows 64 位 | [MSI 安装包](https://github.com/diiyw/quiz/releases/download/v0.1.4/quiz-v0.1.4-windows-amd64.msi) | 双击安装，从开始菜单打开 Quiz |
-| macOS Apple 芯片（M 系列） | [DMG 安装包](https://github.com/diiyw/quiz/releases/download/v0.1.4/quiz-v0.1.4-darwin-arm64.dmg) | 打开 DMG，将 `Quiz.app` 拖入 Applications（应用程序） |
-| macOS Intel 芯片 | [DMG 安装包](https://github.com/diiyw/quiz/releases/download/v0.1.4/quiz-v0.1.4-darwin-amd64.dmg) | 打开 DMG，将 `Quiz.app` 拖入 Applications（应用程序） |
-| Linux x64 | [tar.gz 压缩包](https://github.com/diiyw/quiz/releases/download/v0.1.4/quiz-v0.1.4-linux-amd64.tar.gz) | 解压后运行目录中的 `quiz` |
-| Linux ARM64 | [tar.gz 压缩包](https://github.com/diiyw/quiz/releases/download/v0.1.4/quiz-v0.1.4-linux-arm64.tar.gz) | 解压后运行目录中的 `quiz` |
+| Windows 64 位 | [MSI 安装包](https://github.com/diiyw/quiz/releases/download/v0.1.5/quiz-v0.1.5-windows-amd64.msi) | 双击 MSI 并选择安装目录，安装后从开始菜单打开 Quiz |
+| macOS Apple 芯片（M 系列） | [DMG 安装包](https://github.com/diiyw/quiz/releases/download/v0.1.5/quiz-v0.1.5-darwin-arm64.dmg) | 打开 DMG，将 `Quiz.app` 拖入 Applications（应用程序） |
+| macOS Intel 芯片 | [DMG 安装包](https://github.com/diiyw/quiz/releases/download/v0.1.5/quiz-v0.1.5-darwin-amd64.dmg) | 打开 DMG，将 `Quiz.app` 拖入 Applications（应用程序） |
+| Linux x64 | [tar.gz 压缩包](https://github.com/diiyw/quiz/releases/download/v0.1.5/quiz-v0.1.5-linux-amd64.tar.gz) | 解压后运行目录中的 `quiz` |
+| Linux ARM64 | [tar.gz 压缩包](https://github.com/diiyw/quiz/releases/download/v0.1.5/quiz-v0.1.5-linux-arm64.tar.gz) | 解压后运行目录中的 `quiz` |
 
 Windows 安装只对当前用户生效，无需管理员权限。
 

@@ -8,8 +8,8 @@
 
 ```sh
 go mod download
-go build -o dist/quiz .
-go test -race ./internal/desktop ./internal/extract ./internal/integration ./internal/cli
+python3 scripts/go.py build -o dist/quiz .
+python3 scripts/go.py --check-ui-font test -race ./internal/desktop ./internal/extract ./internal/integration ./internal/cli
 ```
 
 Linux 开发库：`libx11-dev libxext-dev libxrender-dev libxi-dev libwayland-dev libxkbcommon-dev libgl1-mesa-dev pkg-config`。Windows 使用 MinGW-w64，macOS 使用 Xcode Command Line Tools。
@@ -34,11 +34,19 @@ python3 scripts/check-package.py --os linux
 `--os` / `--arch` 可选择其他目标，但交叉构建桌面程序需要相应的 CGO 工具链；DMG 和 MSI 使用各平台原生工具，完整打包请在对应系统执行。
 
 - macOS：使用系统自带的 `hdiutil` 生成 DMG、`codesign` 签名，并在 App Bundle 中配置 ICNS 图标。
-- Windows：需要 MinGW-w64 的 `windres` 和 [.NET SDK](https://dotnet.microsoft.com/download)，执行 `dotnet tool install --global wix --version 6.0.2` 安装 WiX。若只有较新的 .NET Runtime，设置 `DOTNET_ROLL_FORWARD=Major`。MSI 包含开始菜单快捷方式，支持升级和卸载。
+- Windows：需要 MinGW-w64 的 `windres` 和 [.NET SDK](https://dotnet.microsoft.com/download)，执行 `dotnet tool install --global wix --version 6.0.2` 安装 WiX。构建脚本会安装固定版本的 `WixToolset.UI.wixext/6.0.2` 扩展。若只有较新的 .NET Runtime，设置 `DOTNET_ROLL_FORWARD=Major`。双击 MSI 后可浏览并选择安装目录，默认安装到当前用户的 `%LOCALAPPDATA%\Programs\Quiz`，包含开始菜单快捷方式，支持升级和卸载。静默安装仍可通过 `INSTALLFOLDER` 指定目录。
 
 ## 界面字体与启动性能
 
 界面使用内嵌的 `assets/QuizUI.ttf`，由 Onix 固定版本附带的 Noto Sans SC 裁剪而来。它覆盖界面文案、ASCII 和常用标点，避免首屏因中文缺字而扫描所有系统字体；用户文件名中其他字符仍由系统字体补全。字体仅在打开窗口时加载，`--headless`、`--version` 和 `--licenses` 不解析字体。
+
+固定版 Onix 的文字构造器和默认主题还会额外加载系统默认字体。`scripts/engine_patch.py` 在临时模块副本中将引擎默认字体改为同一份内嵌字体，避免 Windows 首帧等待无用的系统字体读取、解析。`build.py` 和 `go.py` 自动应用此修正，不修改 Go 模块缓存或仓库的 `go.mod`；升级引擎时若补丁不再匹配，会停止构建并提示检查。桌面开发请使用上述 `go.py` 命令，直接执行 `go build` 不包含这项修正。
+
+`--check-ui-font` 会让引擎的系统默认字体加载函数直接报错，用于验证整个桌面测试流程未重新引入该调用。发布前可在 Windows 桌面会话中测试实际 EXE 从进程创建到首帧可见的耗时（默认测三次）：
+
+```powershell
+python scripts/check-startup.py "C:\path\to\quiz.exe"
+```
 
 修改中文界面文案后，重新生成字体并运行桌面测试。常规构建直接使用已提交的字体，不需要 Python 字体工具：
 
@@ -46,7 +54,7 @@ python3 scripts/check-package.py --os linux
 python3 -m venv .venv-font
 .venv-font/bin/pip install fonttools==4.55.8
 .venv-font/bin/python scripts/generate-font.py
-go test ./internal/desktop
+python3 scripts/go.py --check-ui-font test ./internal/desktop
 ```
 
 字体保留 SIL OFL 1.1 许可，全文位于 `assets/QuizUI-OFL.txt`，并包含在应用的 `--licenses` 输出中。
